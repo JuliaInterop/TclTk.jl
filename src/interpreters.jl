@@ -377,12 +377,6 @@ function exec(::Type{T}, interp::TclInterp, args...; kwds...) where {T}
             rethrow()
         end
         return unsafe_eval_result(T, status, interp_ptr)
-
-        #list_ptr = unsafe_new_list(unsafe_append_exec_arg, interp_ptr, args...)
-        #status = Tcl_EvalObjEx(interp_ptr, Tcl_IncrRefCount(list_ptr),
-        #                       TCL_EVAL_DIRECT | TCL_EVAL_GLOBAL)
-        #Tcl_DecrRefCount(list_ptr)
-        #return unsafe_eval_result(T, status, interp_ptr)
     end
 end
 

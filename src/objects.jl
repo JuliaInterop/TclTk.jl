@@ -606,3 +606,53 @@ end
     print(io, " to Julia value of type `", T, '`')
     argument_error(String(take!(io)))
 end
+
+#-------------------------------------------------------------------------- Tcl type names -
+
+"""
+    TclTk.Impl.unsafe_object_type(objptr) -> sym::Symbol
+
+Return the symbolic type name of Tcl object pointer `objptr`. The result can be:
+
+- `:null` for a null Tcl object pointer.
+
+- `:string` for an unspecific object type (i.e., null type pointer null).
+
+- `:boolean`, `:int`, `:double`, `:wideInt`, `:bignum`, `:bytearray`, `:list`, `:bytecode`,
+  etc. for an object with a specific internal representation.
+
+If `objptr` is not null, it must be valid for the duration of the call (i.e., protected form
+being garbage collected).
+
+""" unsafe_object_type
+
+# The table of known types is updated while objects of new types are created because seeking
+# for an existing type is much faster than creating the mutable `TclObj` structure so the
+# overhead is negligible.
+const known_types = Tuple{ObjTypePtr,Symbol}[]
+
+function unsafe_object_type(objptr::ObjPtr)
+    return isnull(objptr) ? :null : unsafe_object_type(Tcl_Obj_typePtr(objptr))
+end
+
+function unsafe_object_type(typePtr::ObjTypePtr)
+    global known_types
+    for (ptr, sym) in known_types
+        ptr == typePtr && return sym
+    end
+    return unsafe_register_new_typename(typePtr)
+end
+
+@noinline function unsafe_register_new_typename(typePtr::ObjTypePtr)
+    if isnull(typePtr)
+        sym = :string
+    else
+        # NOTE Type name is a C string at offset 0 of structure `Tcl_ObjType`.
+        namePtr = unsafe_load(Ptr{Tcl_ObjType_name_type}(typePtr + Tcl_ObjType_name_offset))
+        isnull(namePtr) && unexpected_null("Tcl object type name")
+        sym = Symbol(unsafe_string(namePtr))
+        sym === :booleanString && (sym = :boolean) # deal with oddities
+    end
+    push!(known_types, (typePtr, sym))
+    return sym
+end

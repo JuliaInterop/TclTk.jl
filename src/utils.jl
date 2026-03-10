@@ -244,59 +244,6 @@ end
 
 const auto_name_dict = Dict{String,UInt64}()
 
-#-------------------------------------------------------------------------- Tcl type names -
-
-"""
-    TclTk.Impl.unsafe_object_type(ptr) -> sym::Symbol
-
-Return the symbolic type name of Tcl object pointer `ptr`. The result can be:
-
-- `:null` for a null Tcl object pointer.
-
-- `:string` for an unspecific object type (i.e., null type pointer null).
-
-- `:boolean`, `:int`, `:double`, `:wideInt`, `:bignum`, `:bytearray`, `:list`, `:bytecode`,
-  etc. for an object with a specific internal representation.
-
-!!! warning
-    The function is *unsafe* as `ptr` may be null and otherwise must be valid for the
-    duration of the call (i.e., protected form being garbage collected).
-
-""" unsafe_object_type
-
-# The table of known types is updated while objects of new types are created because seeking
-# for an existing type is much faster than creating the mutable `TclObj` structure so the
-# overhead is negligible.
-const _known_types = Tuple{ObjTypePtr,Symbol}[]
-
-function unsafe_object_type(objPtr::ObjPtr)
-    isnull(objPtr) && return :null # null object pointer
-    typePtr = unsafe_load(Ptr{Tcl_Obj_typePtr_type}(objPtr + Tcl_Obj_typePtr_offset))
-    return unsafe_object_type(typePtr)
-end
-
-function unsafe_object_type(typePtr::ObjTypePtr)
-    global _known_types
-    for (ptr, sym) in _known_types
-        ptr == typePtr && return sym
-    end
-    return unsafe_register_new_typename(typePtr)
-end
-
-@noinline function unsafe_register_new_typename(typePtr::ObjTypePtr)
-    if isnull(typePtr)
-        sym = :string
-    else
-        # NOTE Type name is a C string at offset 0 of structure `Tcl_ObjType`.
-        namePtr = unsafe_load(Ptr{Tcl_ObjType_name_type}(typePtr + Tcl_ObjType_name_offset))
-        isnull(namePtr) && unexpected_null("Tcl object type name")
-        sym = Symbol(unsafe_string(namePtr))
-        sym === :booleanString && (sym = :boolean) # deal with oddities
-    end
-    push!(_known_types, (typePtr, sym))
-    return sym
-end
-
 #---------------------------------------------------------------------------------- Errors -
 
 Base.showerror(io::IO, ex::TclError) = print(io, "Tcl/Tk error: ", ex.msg)

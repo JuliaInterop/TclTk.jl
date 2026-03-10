@@ -196,9 +196,13 @@ const Tcl_Obj_internalRep_types = (Clong, Cdouble, Ptr{Cvoid}, WideInt,
 # Define constants for the types and offsets of all fields but the last ones.
 for (index, name) in enumerate(fieldnames(FakeObj{Nothing,0}))
     name == :padding && break
+    type = Symbol("Tcl_Obj_",name,"_type")
+    offset = Symbol("Tcl_Obj_",name,"_offset")
+    accessor = Symbol("Tcl_Obj_",name)
     @eval begin
-        const $(Symbol("Tcl_Obj_",name,"_type")) = $(fieldtype(FakeObj{Nothing,0}, index))
-        const $(Symbol("Tcl_Obj_",name,"_offset")) = $(fieldoffset(FakeObj{Nothing,0}, index))
+        const $type = $(fieldtype(FakeObj{Nothing,0}, index))
+        const $offset = $(fieldoffset(FakeObj{Nothing,0}, index))
+        $accessor(objptr::Ptr{Tcl_Obj}) = unsafe_load(Ptr{$type}(objptr + $offset))
     end
 end
 

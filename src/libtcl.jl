@@ -347,8 +347,13 @@ function Tcl_SetStringObj(obj, str, len)
     @ccall libtcl.Tcl_SetStringObj(obj::Ptr{Tcl_Obj}, str::Ptr{UInt8}, len::Tcl_Size)::Cvoid
 end
 
-function Tcl_GetString(obj)
-    @ccall libtcl.Tcl_GetString(obj::Ptr{Tcl_Obj})::Cstring
+if TCL_MAJOR_VERSION ≥ 9
+    # Since Tcl9, `Tcl_GetString` is a macro in `generic/tclDefs.h`.
+    Tcl_GetString(obj) = Tcl_GetStringFromObj(obj, C_NULL)
+else
+    function Tcl_GetString(obj)
+        @ccall libtcl.Tcl_GetString(obj::Ptr{Tcl_Obj})::Ptr{UInt8}
+    end
 end
 
 function Tcl_GetStringFromObj(obj, lenPtr)

@@ -153,7 +153,7 @@ typedef struct Tcl_ObjType Tcl_ObjType;
 typedef struct Tcl_Obj {
     int refCount;
     char *bytes;
-    int length;
+    Tcl_Size length; // `Tcl_Size` is `int` in Tcl8, `int64_t` in Tcl9
     const Tcl_ObjType *typePtr;
     union {
         long longValue;
@@ -181,7 +181,7 @@ typedef struct Tcl_Obj {
 struct FakeObj{T,N}
     refCount::Cint
     bytes::Ptr{Cchar}
-    length::Cint
+    length::Tcl_Size
     typePtr::Ptr{Tcl_ObjType}
     padding::NTuple{N,UInt8}
     internalRep::T

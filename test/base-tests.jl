@@ -290,6 +290,15 @@ end
     @test_throws Exception TclObj(1.0 - 2.3im)
     @test_throws Exception convert(Complex{Float64}, TclObj(1.0))
 
+    # Conversion to Union{Nothing,T}.
+    s = "a non-empty string"
+    @test convert(TclTk.NothingOr{String}, TclObj(s)) == s
+    @test convert(TclTk.NothingOr{String}, TclObj("")) === nothing
+    @test convert(TclTk.NothingOr{Int}, TclObj("")) === nothing
+    @test convert(TclTk.NothingOr{Int}, TclObj("-42")) === -42
+    @test convert(TclTk.NothingOr{Int16}, TclObj("-42")) === Int16(-42)
+    @test_throws ArgumentError convert(TclTk.NothingOr{Int}, TclObj("1.2"))
+
     # Short/long conversion error messages.
     @test_throws ArgumentError convert(Int, TclObj("yes"))
     @test_throws ArgumentError convert(Int, TclObj("This long string is not an integer and should trigger an exception when attempting to convert it to an integer, you have been warned..."))

@@ -101,6 +101,7 @@ for sym in (
 
     # Types.
     :Callback,
+    :NothingOr,
     :Value,
     :Variable,
     :WideInt,

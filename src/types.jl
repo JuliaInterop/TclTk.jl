@@ -92,6 +92,15 @@ end
 # Floating-point types.
 const FloatingPoint = Union{Irrational,Rational,AbstractFloat}
 
+"""
+    TclTk.NothingOr{T}
+
+Singleton type representing the union `Union{Nothing,T}` used to extract the, possibly
+empty, value of an object or result of a sub-command.
+
+"""
+struct NothingOr{T} end
+
 struct PrefixedFunction{F,T}
     func::F
     arg1::T

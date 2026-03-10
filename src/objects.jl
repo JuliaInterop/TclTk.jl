@@ -87,7 +87,7 @@ Base.convert(::Type{TclObj}, val::Value) = TclObj(val)::TclObj
 
 Base.convert(::Type{String}, obj::TclObj) = String(obj)::String
 Base.convert(::Type{Symbol}, obj::TclObj) = Symbol(obj)::Symbol
-function Base.convert(::Type{T}, obj::TclObj) where {T<:Value}
+function Base.convert(::Type{T}, obj::TclObj) where {T<:Union{Value,NothingOr{<:Value}}}
     GC.@preserve obj begin
         # NOTE `unsafe_convert` takes care of null object pointer.
         return unsafe_convert(T, pointer(obj))
@@ -575,6 +575,31 @@ end
         length(A) == N || unsafe_convert_error(T, objptr)
         return $expr
     end
+end
+
+function unsafe_convert(::Type{NothingOr{T}}, objptr::ObjPtr) where {T}
+    if !isnull(objptr)
+        if T == String
+            len = Ref{Tcl_Size}()
+            ptr = Tcl_GetStringFromObj(objptr, len)
+            iszero(len[]) && return nothing
+            return unsafe_string(ptr, len[])
+        else
+            unsafe_isempty(objptr) && return nothing
+            try
+                return unsafe_convert(T, objptr)
+            catch
+                # error is reported below
+            end
+        end
+    end
+    unsafe_convert_error(Union{Nothing,T}, objptr)
+end
+
+# Yield whether Tcl object at `objptr` is empty. `objptr` must not be null. See
+# `Tcl_GetStringFromObj` in `generic/tclObj.c` for the rationale.
+function unsafe_isempty(objptr::ObjPtr)
+    return !isnull(Tcl_Obj_bytes(objptr)) && iszero(Tcl_Obj_length(objptr))
 end
 
 # Generic and error catcher methods for other Julia types.

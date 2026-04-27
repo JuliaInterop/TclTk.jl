@@ -412,7 +412,49 @@ for cmd in (:grid, :pack, :place)
     end
 end
 
+# Canvas sub-commands that do not return an empty string (`nothing`).
+
+# The default for `bbox` cannot be `Tuple{4,Float64}` because there may be no matching items
+# and an empty result.
+function (f::SubCommand{:bbox, Canvas})(tags::TagOrId...)
+    r = f(TclObj, tags...)
+    n = length(r)
+    n == 0 && return nothing
+    n == 4 || error("unexpected result for `bbox` canvas command: \"",
+                    escape_string(string(r)), "\"")
+    return convert(NTuple{4,Int}, r)
+end
+
+# Same logic as `bind`.
+(f::SubCommand{:bind, Canvas})(tag::TagOrId) = f(TclObj, tag)
+(f::SubCommand{:bind, Canvas})(tag::TagOrId, seq) = f(TclObj, tag, seq)
+(f::SubCommand{:bind, Canvas})(tag::TagOrId, seq, script) = f(TclObj, tag, seq, script)
+# FIXME (f::SubCommand{:bind, Canvas})(::Type{T}, tag::TagOrId, args...) where {T} =
+# FIXME     exec(T, f.caller, :bind, tag, args...)
+
+(f::SubCommand{:canvasx, Canvas})(x::Union{TclObj,Real}) = f(Float64, x)
+(f::SubCommand{:canvasy, Canvas})(y::Union{TclObj,Real}) = f(Float64, y)
+(f::SubCommand{:coords, Canvas})(tag::TagOrId) = f(Vector{Float64}, tag)
+(f::SubCommand{:create, Canvas})(type::Word, args...) = f(Int, type, args...)
 (f::SubCommand{:find, Canvas})(spec::Word, args...) = f(TclObj, spec, args...)
+
+# TODO focus
+(f::SubCommand{:gettags, Canvas})(tag::TagOrId) = f(TclObj, tag)
+(f::SubCommand{:index, Canvas})(tag::TagOrId, index) = f(Int, tag, index)
+
+(f::SubCommand{:itemcget, Canvas})(tag::TagOrId, opt::Word) = f(TclObj, tag, opt)
+(f::SubCommand{:itemcget, Canvas})(::Type{T}, tag::TagOrId, opt::Word) where {T} =
+    exec(T, f.caller, :itemcget, tag, with_hyphen(opt))
+
+# TODO itemconfigure
+
+(f::SubCommand{:postscript, Canvas})(pairs::Pair...; kwds...) = f(TclObj, pairs...; kwds...)
+
+(f::SubCommand{:type, Canvas})(tag::TagOrId) = f(Symbol, tag)
+
+(f::SubCommand{:xview, Canvas})() = f(Tuple{2,Float64})
+(f::SubCommand{:yview, Canvas})() = f(Tuple{2,Float64})
+
 
 """
     TclTk.Impl.isrootwidget(w) -> bool

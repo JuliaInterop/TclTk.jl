@@ -113,6 +113,9 @@ end
 # A "word" in a command (must not be a number) also used for option names.
 const Word = Union{AbstractString,Symbol,TclObj}
 
+# An item tag or identifier in a canvas.
+const TagOrId = Union{Word,Integer}
+
 # `Name` is anything that can be understood as the name of a variable or of a command.
 const Name = Union{Word,Real}
 

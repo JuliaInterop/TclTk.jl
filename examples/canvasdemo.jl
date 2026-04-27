@@ -25,7 +25,7 @@ counter[] = 0
 
 # Create a label to display the number of markers.
 count = Label(bar, background="white", borderwidth=1, relief=:sunken,
-                width=5, text=0, textvariable=counter.name)
+              anchor=:center, width=5, text=0, textvariable=counter.name)
 
 # Arrange widgets in their parent.
 canvas.pack(side=:top, expand=true, fill=:both)
@@ -34,9 +34,6 @@ mesg.pack(side=:left, expand=true, fill=:both)
 count.pack(side=:right, expand=false, fill=:both, padx=5, pady=5)
 
 # Function to add a marker in a canvas.
-add_marker(canvas::Canvas, xm, ym; kwds...) =
-    add_marker(canvas.interp, canvas, xm, ym; kwds...)
-
 function add_marker(canvas::Canvas, xm, ym;
                     tag="marker", radius=4, adjust::Bool=false,
                     fill=Colors.JULIA_LOGO_COLORS.green,

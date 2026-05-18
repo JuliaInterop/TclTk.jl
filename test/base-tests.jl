@@ -327,15 +327,11 @@ end
     @test s == "TclObj((2, -3, \"hello\", 8.25,))"
     let i = 1, t_i = t[i], T = typeof(t_i) # 1st item is an `Int`
         @test convert(T, y[i]) == t_i
-        @test y[i => T] === t_i
-        @test y[i, T] === t_i
-        @test y[T, i] === t_i
+        @test fetch(T, y, i) === t_i
     end
     let i = 4, t_i = t[i], T = typeof(t_i) # 4th item is a `Float64`
         @test convert(T, y[i]) == t_i
-        @test y[i => T] === t_i
-        @test y[i, T] === t_i
-        @test y[T, i] === t_i
+        @test fetch(T, y, i) == t_i
     end
     @test convert(typeof(t), y) == t
     t = (2, -3, x, (0:255)...) # a long tuple

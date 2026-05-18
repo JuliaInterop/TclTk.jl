@@ -23,6 +23,9 @@ Versioning](https://semver.org).
 
 - `TclTk.list` is now `tcl_list`, `TclTk.concat` is now `tcl_concat`.
 
+- `list[i => T]`, `list[T, i]`, and `list[i, T]` to retrieve the `i`-th item of the Tcl `list`
+  converted to type `T` is now done by `fetch(T, list, i)`.
+
 ### Added
 
 - New `wm` function for interacting with the window manager. This function accepts

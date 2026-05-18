@@ -82,21 +82,6 @@ function Base.getindex(obj::TclObj, index::Integer)
     end
 end
 
-#FIXME replace by Base.fetch(T, obj, index)
-@inline Base.getindex(obj::TclObj, pair::Pair{<:Integer,<:DataType}) =
-    getindex(obj, pair...)
-
-Base.getindex(obj::TclObj, ::Type{T}, index::Integer) where {T} =
-    getindex(obj, index, T)
-
-function Base.getindex(obj::TclObj, index::Integer, ::Type{T}) where {T}
-    GC.@preserve obj begin
-        objptr = unsafe_getindex(obj, index)
-        isnull(objptr) && throw(BoundsError(obj, index))
-        return unsafe_convert(T, objptr)
-    end
-end
-
 function Base.getindex(obj::TclObj, inds::AbstractVector{<:Integer})
     GC.@preserve obj begin
         A = UnsafeList(pointer(obj))

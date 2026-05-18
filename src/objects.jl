@@ -21,14 +21,14 @@ be added, deleted, etc.
 
 # Properties
 
-Tcl objects have the following properties:
+Tcl objects have the following read-only properties:
 
-- `obj.refcnt` yields the reference count of `obj`. If `obj.refcnt > 1`, the object is
-  shared and must be copied before being modified.
+- `obj.refcnt` is the reference count of `obj`. If `obj.refcnt > 1`, the object is shared
+  and must be copied before being modified.
 
-- `obj.ptr` yields the pointer to the Tcl object, this is the same as `pointer(obj)`.
+- `obj.ptr` is the pointer to the Tcl object, this is the same as `pointer(obj)`.
 
-- `obj.type` yields the *current internal type* of `obj` as a symbol. This type may change
+- `obj.type` is the *current internal type* of `obj` as a symbol. This type may change
   depending on how the object is used by Tcl. For example, after having evaluated a script
   in a Tcl string object, the object internal state becomes `:bytecode` to reflect that it
   now stores compiled byte code.
@@ -630,6 +630,136 @@ end
     end
     print(io, " to Julia value of type `", T, '`')
     argument_error(String(take!(io)))
+end
+
+#----------------------------------------------------------------------- Fetching value(s) -
+
+"""
+    fetch(T, obj::TclObj) -> x::T
+    fetch(T, obj::TclObj, i::Integer) -> x::T
+    fetch(T, obj::TclObj, inds) -> x::T
+
+Return a Julia value of type `T` from Tcl object `obj`. With no other argument than `T` and
+`obj`, this is exactly the same as calling `convert(T, obj)`. If an index `i` is specified,
+the `i`-th element of `obj` (considered as a list) is converted and returned. If indices
+`inds` are specified (e.g., an index range), the sub-list `obj[inds]` is converted and
+returned.
+
+Compared to `convert(T, obj)`, `convert(T, obj[i])`, or `convert(T, obj[inds])`, calling
+`fetch` is more general as `T` can be the type of an object (such as a widget or an image).
+For basic types (numbers, string, etc.) and if an index `i` or indices `inds` are specified,
+`fetch` is a bit faster than `convert` as temporaries are avoided.
+
+# Examples
+
+```julia-repl
+julia> x = TclObj((false, -7, 1.5, "text", ('a', 2)))
+TclObj((0, -7, 1.5, "text", ("a", 2,),))
+
+julia> fetch(Bool, x, 1)
+false
+
+julia> convert(Tuple{Char,Int}, x[5])
+('a', 2)
+
+julia> fetch(Tuple{Char,Int}, x, 5) # same as above but a bit faster and allocation free
+('a', 2)
+
+julia> fetch(Tuple{String,Float64,Tuple{Char,Int}}, x, (4,3,5))
+("text", 1.5, ('a', 2))
+
+julia> fetch(Tuple{Bool,Int16,Float32,Symbol}, x, 1:4)
+(false, -7, 1.5f0, :text)
+
+```
+
+`fetch` is useful for implementing a Tcl callback. For example, if `args` is the Tcl object
+with the arguments received by a callback bound to an event with `"%W %x %y"`, then:
+
+```julia
+w = fetch(Canvas, args, 2)
+x = fetch(Int,    args, 3)
+y = fetch(Int,    args, 4)
+```
+
+retrieves the 2nd, 3rd, and 4th elements of `args` set with the calling widget (here a
+canvas) and the pointer position (for a callback, the 1st element of `args` is the name of
+the associated Tcl command). This can also be done in a single statement by:
+
+```julia
+w, x, y = fetch(Tuple{Canvas,Int,Int}, args, 2:4)
+```
+
+# See also
+
+[`TclTk.Callback`](@ref).
+
+"""
+function Base.fetch(::Type{T}, obj::TclObj) where {T}
+    if T <: TkObject
+        # Call the constructor for Tk objects.
+        return T(obj)::T
+    else
+        # For other types, it is sufficient to call `convert`.
+        return convert(T, obj)::T
+    end
+end
+
+function Base.fetch(::Type{T}, obj::TclObj, ::Colon=:) where {T<:Tuple}
+    # To fetch a tuple, the object must be considered as a list.
+    GC.@preserve obj begin
+        return unsafe_fetch(T, pointer(obj))::T
+    end
+end
+
+function Base.fetch(::Type{T}, obj::TclObj, i::Integer) where {T}
+    # First fetch i-th element of the list to check for bounds error, then fetch a value of
+    # type T out of the item.
+    GC.@preserve obj begin
+        item = unsafe_getindex(obj, i)
+        isnull(item) && throw(BoundsError(obj, i))
+        return unsafe_fetch(T, item)::T
+    end
+end
+
+@generated function Base.fetch(::Type{T}, obj::TclObj,
+                               inds::Union{AbstractVector{<:Integer},
+                                           Tuple{Vararg{Integer}}}) where {N,T<:NTuple{N,Any}}
+    # To fetch with indices, the object must be considered as a list.
+    types = fieldtypes(T)
+    expr = Expr(:tuple, [:(unsafe_fetch($(types[i]), list[inds[off + $i]])) for i in 1:N]...)
+    quote
+        len = length(inds)
+        len == N || argument_error("cannot fetch a $N-tuple from a $len-element Tcl sub-list")
+        GC.@preserve obj begin
+            list = UnsafeList(pointer(obj))
+            off = firstindex(inds)::Int - 1
+            return ($expr)::T
+        end
+    end
+end
+
+# Same as `fetch` but for an object pointer.
+function unsafe_fetch(::Type{T}, objptr::ObjPtr) where {T}
+    if T <: TkObject
+        # Call the constructor for Tk objects.
+        return T(_TclObj(objptr))
+    else
+        # Default is to call `unsafe_convert`.
+        return unsafe_convert(T, objptr)
+    end
+end
+
+# Convert to fully specified Tuple.
+@generated function unsafe_fetch(::Type{T}, objptr::ObjPtr) where {N,T<:NTuple{N,Any}}
+    types = fieldtypes(T)
+    expr = Expr(:tuple, [:(unsafe_fetch($(types[i]), list[$i])) for i in 1:N]...)
+    quote
+        list = UnsafeList(objptr)
+        len = length(list)
+        len == N || argument_error("cannot fetch a $N-tuple from a $len-element Tcl list")
+        return $expr
+    end
 end
 
 #-------------------------------------------------------------------------- Tcl type names -

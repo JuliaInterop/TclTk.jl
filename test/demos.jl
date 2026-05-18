@@ -3,7 +3,7 @@ module TclDemos
 using TclTk
 
 # Define some shortcuts.
-using TclTk: resume, cget, grid, pack, place, list, concat
+using TclTk: resume, cget, grid, pack, place
 
 #const tkgetpixels = TclTk.getpixels
 const getparent = TclTk.getparent
@@ -24,7 +24,7 @@ function addseedismiss(parent, child)
     dismiss = Button(w, "dismiss", :text => "Dismiss",
                         #:image => "::img::delete",
                         :compound => "left",
-                        :command => list(:destroy, interp(:winfo, :toplevel, w)))
+                        :command => tcl_list(:destroy, interp(:winfo, :toplevel, w)))
 
     # createcommand(interp, "jlcallback", (args...) -> println("Ouch!"))
     code = Button(w, "code", :text => "See Code",

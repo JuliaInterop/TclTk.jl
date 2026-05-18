@@ -2,21 +2,21 @@
 
 ## Building lists
 
-There are two functions to create lists of Tcl objects out of their arguments: [`TclTk.list`](@ref)
-and [`TclTk.concat`](@ref). For example:
+There are two functions to create lists of Tcl objects out of their arguments:
+[`tcl_list`](@ref) and [`tcl_concat`](@ref). For example:
 
 ```julia-repl
-julia> x = TclTk.list("a {b c}", 1, π, (-1, 2, 4))
+julia> x = tcl_list("a {b c}", 1, π, (-1, 2, 4))
 TclObj(("a {b c}", 1, 3.141592653589793, (-1, 2, 4,),))
 
-julia> y = TclTk.concat("a {b c}", 1, π, (-1, 2, 4))
+julia> y = tcl_concat("a {b c}", 1, π, (-1, 2, 4))
 TclObj(("a", "b c", "1", "3.141592653589793", -1, 2, 4,))
 
 ```
 
-As can be seen in the above examples, [`TclTk.list`](@ref) follows the behavior of the Tcl
+As can be seen in the above examples, [`tcl_list`](@ref) follows the behavior of the Tcl
 `list` command and each of `args..` is an element of the returned list, while
-[`TclTk.concat`](@ref) follows the behavior of the Tcl `concat` command and concatenates the
+[`tcl_concat`](@ref) follows the behavior of the Tcl `concat` command and concatenates the
 elements of the arguments `args...` each being considered as a list.
 
 
@@ -67,13 +67,13 @@ TclObj((1, 3.141592653589793,))
 ```
 
 Base methods `push!` and `append!` add elements to the end of a list, the former performs as
-[`TclTk.list`](@ref) and the latter performs as [`TclTk.concat`](@ref):
+[`tcl_list`](@ref) and the latter performs as [`tcl_concat`](@ref):
 
 ```julia-repl
-julia> push!(TclTk.list("a"), "b c")
+julia> push!(tcl_list("a"), "b c")
 TclObj(("a", "b c",))
 
-julia> append!(TclTk.list("a"), "b c")
+julia> append!(tcl_list("a"), "b c")
 TclObj(("a", "b", "c",))
 
 ```
@@ -81,7 +81,7 @@ TclObj(("a", "b", "c",))
 Base method `delete!` deletes element(s) from a list:
 
 ```julia-repl
-julia> z = TclTk.list("a {b c}", 1, π, (-1, 2, 4))
+julia> z = tcl_list("a {b c}", 1, π, (-1, 2, 4))
 TclObj(("a {b c}", 1, 3.141592653589793, (-1, 2, 4,),))
 
 julia> delete!(z, 3)

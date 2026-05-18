@@ -83,6 +83,7 @@ include("Impl.jl")
     TCL_LEAVE_ERR_MSG,
 
     # Methods.
+    tcl_concat,
     tcl_error,
     tcl_library,
     tcl_version,
@@ -92,6 +93,7 @@ include("Impl.jl")
     tk_getSaveFile,
     tk_messageBox,
     tk_start
+    tcl_list,
 
 # Non-exported public symbols.
 for sym in (
@@ -109,7 +111,6 @@ for sym in (
     # Methods.
     :bool,
     :cget,
-    :concat,
     :configure,
     :deletecommand,
     :do_events,
@@ -124,7 +125,6 @@ for sym in (
     :isdeleted,
     :isrunning,
     :issafe,
-    :list,
     :pack,
     :place,
     :quote_string,
@@ -146,5 +146,8 @@ for sym in (
         @eval $(Base.Expr(:public, sym))
     end
 end
+
+@deprecate list(args...) tcl_list(args...) false
+@deprecate concat(args...) tcl_concat(args...) false
 
 end # module

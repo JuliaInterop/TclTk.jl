@@ -4,8 +4,8 @@
 
 ```@docs
 TclObj
-TclTk.concat
-TclTk.list
+tcl_concat
+tcl_list
 ```
 
 ## Interpreters

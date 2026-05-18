@@ -1,47 +1,53 @@
+# TODO: Tcl_IncrRefCount -> preserve
+# TODO: Tcl_DecrRefCount -> release
+# TODO: Tcl_ListObjIndex -> @ccall
+
 """
-     TclTk.list(args...) -> lst
-     interp.list(args...) -> lst
+     tcl_list(args...) -> list::TclObj
 
-Build a list `lst` of Tcl objects such that each of `args...` is a single element of `lst`.
-This mimics the behavior of the Tcl `list` command.
-
-In the second above example, `interp` is a Tcl interpreter used to retrieve an error message
-in case of failure.
+Return a list of Tcl objects such that each of `args...` is a single element of the returned
+list. This mimics the behavior of the Tcl `list` command.
 
 # See also
 
-[`TclTk.concat`](@ref), [`TclTk.eval`](@ref), [`TclObj`](@ref), and [`TclInterp`](@ref).
+[`tcl_concat`](@ref), [`tcl_eval`](@ref), and [`TclObj`](@ref).
 
 """
-function list end
-
-"""
-    TclTk.concat(args...) -> lst
-    interp.concat(args...) -> lst
-
-Build a list of Tcl objects obtained by concatenating the elements of the arguments `arg...`
-each being considered as a list. This mimics the behavior of the Tcl `concat` command.
-
-In the second above example, `interp` is a Tcl interpreter used to retrieve a more
-informative error message in case of error.
-
-# See also
-
-[`TclTk.list`](@ref), [`TclTk.eval`](@ref), [`TclObj`](@ref), and [`TclInterp`](@ref).
-
-"""
-function concat end
-
-for (func, append) in (:list   => :unsafe_append_element,
-                       :concat => :unsafe_append_list,
-                       )
-    @eval begin
-        $func(args...) = _TclObj(new_list($append, args...))
-        function $func(interp::TclInterp, args...)
-            GC.@preserve interp begin
-                return _TclObj(unsafe_new_list($append, checked_pointer(interp), args...))
-            end
+function tcl_list(args...)
+    list = new_list()
+    try
+        for arg in args
+            unsafe_append_element(list, arg)
         end
+        return _TclObj(list)
+    catch ex
+        Tcl_DecrRefCount(list)
+        rethrow(ex)
+    end
+end
+
+"""
+    tcl_concat(args...) -> list::TclObj
+
+Return a list of Tcl objects obtained by concatenating the elements of the arguments
+`arg...` each being considered as a list. This mimics the behavior of the Tcl `concat`
+command.
+
+# See also
+
+[`tcl_list`](@ref), [`tcl_eval`](@ref), and [`TclObj`](@ref).
+
+"""
+function tcl_concat(args...)
+    list = new_list()
+    try
+        for arg in args
+            unsafe_append_list(list, arg)
+        end
+        return _TclObj(list)
+    catch ex
+        Tcl_DecrRefCount(list)
+        rethrow(ex)
     end
 end
 
@@ -76,6 +82,7 @@ function Base.getindex(obj::TclObj, index::Integer)
     end
 end
 
+#FIXME replace by Base.fetch(T, obj, index)
 @inline Base.getindex(obj::TclObj, pair::Pair{<:Integer,<:DataType}) =
     getindex(obj, pair...)
 
@@ -171,7 +178,7 @@ end
 function unsafe_getindex(obj::Union{TclObj,ObjPtr}, index::Integer)
     objref = Ref{ObjPtr}(0)
     if index ≥ 𝟙
-        status = Tcl_ListObjIndex(null(InterpPtr), obj, index - 𝟙, objref)
+        status = Tcl_ListObjIndex(C_NULL, obj, index - 𝟙, objref)
         status == TCL_OK || invalid_list()
     end
     return objref[]
@@ -190,15 +197,12 @@ The returned vector may be indexed for reading: `A[i]` yields a pointer to the `
 of the list but `A[i] = x` is forbidden.
 
 """
-UnsafeList(objptr::ObjPtr) = UnsafeList(InterpPtr(0), objptr)
-
-# `interp` is only needed for error messages.
-function UnsafeList(interp::InterpPtr, objptr::ObjPtr)
+function UnsafeList(objptr::ObjPtr)
     objc = Ref(zero(Tcl_Size))
     objv = Ref(null(Ptr{ObjPtr}))
     if !isnull(objptr)
-        status = Tcl_ListObjGetElements(interp, objptr, objc, objv)
-        status == TCL_OK || unsafe_error(interp, "failed to retrieve Tcl list elements")
+        status = Tcl_ListObjGetElements(C_NULL, objptr, objc, objv)
+        status == TCL_OK || tcl_error("failed to retrieve Tcl list elements")
     end
     return UnsafeList(objv[], objc[])
 end
@@ -262,30 +266,24 @@ end
 #
 function unsafe_replace_list(list::ObjPtr, first::Integer,
                              count::Integer, objc::Integer, objv)
-    unsafe_replace_list(null(InterpPtr), list, first, count, objc, objv)
-end
-
-function unsafe_replace_list(interp::InterpPtr, list::ObjPtr, first::Integer,
-                             count::Integer, objc::Integer, objv)
-    assert_writable(list) # required by copy-on-write policy
-    status = Tcl_ListObjReplace(interp, list, first, count, objc, objv)
-    status == TCL_OK || unsafe_error(interp, "failed to replace Tcl list element(s)")
+    assert_writable(list) # required by Tcl copy-on-write policy
+    status = @ccall libtcl.Tcl_ListObjReplace(
+        C_NULL::Ptr{Tcl_Interp}, list::Ptr{Tcl_Obj}, first::Tcl_Size, count::Tcl_Size,
+        objc::Tcl_Size, objv::Ptr{Ptr{Tcl_Obj}})::TclStatus
+    status == TCL_OK || tcl_error("failed to replace Tcl list element(s)")
     return nothing
 end
 
 """
-    TclTk.Impl.new_list() -> lstptr
+    TclTk.Impl.new_list() -> list
 
 Return a pointer to a Tcl object storing an empty list.
 
-    TclTk.Impl.new_list(f, [interp,] args...) -> lstptr
+    TclTk.Impl.new_list(f, args...) -> list
 
-Return a pointer to a Tcl object storing a list built by calling `f(interp, list, arg)` for
-each `arg` in `args...`. Typically, `f` is [`TclTk.Impl.unsafe_append_element`](@ref) or
+Return a pointer to a Tcl object storing a list built by calling `f(list, arg)` for each
+`arg` in `args...`. Typically, `f` is [`TclTk.Impl.unsafe_append_element`](@ref) or
 [`TclTk.Impl.unsafe_append_list`](@ref).
-
-Optional argument `interp` is a Tcl interpreter that can be used to retrieve the error
-message in case of failure.
 
 !!! warning
     The returned object is not managed and has a zero reference count. The caller is
@@ -294,51 +292,16 @@ message in case of failure.
 """
 new_list() = Tcl_NewListObj(0, C_NULL)
 
-new_list(f::Function, args...) = unsafe_new_list(f, null(InterpPtr), args...)
-
-function new_list(f::Function, interp::TclInterp, args...)
-    GC.@preserve interp begin
-        return unsafe_new_list(f, checked_pointer(interp), args...)
-    end
-end
-
-# Build a list from a given vector of of objects.
-
+# Build a list from a given vector of objects. FIXME unused?
 function new_list(objc::Integer, objv::Ptr{Ptr{Tcl_Obj}})
     return new_list(unsafe_append_element, objc, objv)
 end
 
-function new_list(f::Function, objc::Integer, objv::Ptr{Ptr{Tcl_Obj}})
-    return unsafe_new_list(f, null(InterpPtr), objc, objv)
-end
-
-function new_list(interp::TclInterp, objc::Integer, objv::Ptr{Ptr{Tcl_Obj}})
-    return new_list(unsafe_append_element, interp, objc, objv)
-end
-
-function new_list(f::Function, interp::TclInterp, objc::Integer, objv::Ptr{Ptr{Tcl_Obj}})
-    GC.@preserve interp begin
-        return unsafe_new_list(f, null_or_checked_pointer(interp), objc, objv)
-    end
-end
-
-"""
-    TclTk.Impl.unsafe_new_list(f, interp, args...) -> lstptr
-
-Unsafe method called by [`TclTk.Impl.new_list`](@ref) to build its result. Argument `interp` is a
-pointer to a Tcl interpreter. If `interp` is non-null, it is used to retrieve the error
-message in case of failure.
-
-!!! warning
-    Unsafe: If `interp` is specified and non-null, it must be valid during the call of the
-    `unsafe_new_list` method.
-
-"""
-function unsafe_new_list(f::Function, interp::InterpPtr, args...)
+function new_list(f::Function, args...)
     list = new_list()
     try
         for arg in args
-            f(interp, list, arg)
+            f(list, arg)
         end
     catch
         Tcl_DecrRefCount(list) # free list object
@@ -347,12 +310,11 @@ function unsafe_new_list(f::Function, interp::InterpPtr, args...)
     return list
 end
 
-function unsafe_new_list(f::Function, interp::InterpPtr,
-                         objc::Integer, objv::Ptr{Ptr{Tcl_Obj}})
+function new_list(f::Function, objc::Integer, objv::Ptr{Ptr{Tcl_Obj}})
     list = new_list()
     try
         for i in 1:objc
-            f(interp, list, unsafe_load(objv, i))
+            f(list, unsafe_load(objv, i))
         end
     catch
         Tcl_DecrRefCount(list) # free list object
@@ -371,35 +333,34 @@ end
 # collected.
 
 """
-    TclTk.Impl.unsafe_append_element([interp,] list, item) -> nothing
+    TclTk.Impl.unsafe_append_element(list, item) -> nothing
 
 Private method to append `item` as a single element to the Tcl object `list`.
-
-Optional argument `interp` is a pointer to a Tcl interpreter. If `interp` is specified and
-non-null, it is used to retrieve the error message in case of failure.
 
 The following conditions are asserted: `list` must be *writable* (i.e., a non-null pointer
 to a non-shared Tcl object) and `item` must be *readable* (i.e., a non-null pointer to a Tcl
 object).
 
 !!! warning
-    Unsafe method: `list`, `item`, and `interp` (the latter if non-null) must remain valid
-    during the call to this method (e.g., preserved from being garbage collected).
+    Unsafe method: `list` and `item` must remain valid during the call to this method (e.g.,
+    preserved from being garbage collected).
 
 !!! warning
     The method may throw and the caller is responsible of managing the reference count of
-    `item` to have it automatically deleted in case of errors if it is fresh object created
-    by `new_object(val)`.
+    `item` to have it automatically deleted in case of errors if it is a fresh object
+    created by `new_object(val)`.
 
 # See also
 
 [`TclTk.Impl.unsafe_append_list`](@ref) and [`TclTk.Impl.new_list`](@ref).
 
 """
-function unsafe_append_element end
+function unsafe_append_element(list::ObjPtr, arg)
+    unsafe_append(Tcl_ListObjAppendElement, list, arg)
+end
 
 """
-    TclTk.Impl.unsafe_append_list([interp,] list, iter) -> nothing
+    TclTk.Impl.unsafe_append_list(list, iter) -> nothing
 
 Private method to concatenate the elements of `iter` to the end of the Tcl object `list`.
 
@@ -408,42 +369,41 @@ Private method to concatenate the elements of `iter` to the end of the Tcl objec
 [`TclTk.Impl.unsafe_append_element`](@ref) and [`TclTk.Impl.new_list`](@ref).
 
 """
-function unsafe_append_list end
+function unsafe_append_list(list::ObjPtr, arg)
+    unsafe_append(Tcl_ListObjAppendList, list, arg)
+end
 
-for (jl, (c, mesg)) in (:unsafe_append_element => (:(Tcl_ListObjAppendElement),
-                                                   "failed to append item to Tcl list"),
-                        :unsafe_append_list => (:(Tcl_ListObjAppendList),
-                                                "failed to concatenate Tcl lists"),
-                        )
-    @eval begin
-        $jl(list::ObjPtr, arg) = $jl(null(InterpPtr), list, arg)
-
-        # NOTE The computational burden of `Tcl_ListObjAppendElement` and
-        # `Tcl_ListObjAppendList` is such that not incrementing and finally decrementing the
-        # reference count of a wrapped object is a negligible optimization.
-        function $jl(interp::InterpPtr, list::ObjPtr, arg)
-            assert_writable(list) # required by copy-on-write policy
-            objptr = if arg isa WrappedObject
-                unsafe_objptr(arg)
-            elseif arg isa Function
-                # Setting a callback involves (i) passing the name of the corresponding Tcl
-                # command and (ii) creating this command in the target interpreter if it
-                # does not exists.
-                tcl_error("appending a callback is not yet implemented")
-            else
-                Tcl_IncrRefCount(unsafe_objptr(arg))
-            end
-            status = $c(interp, list, objptr)
-            arg isa WrappedObject || Tcl_DecrRefCount(objptr)
-            status == TCL_OK || unsafe_error(interp, $mesg)
-            return nothing
-        end
+function unsafe_append_list(list::ObjPtr, iter::Tuple)
+    for item in iter
+        unsafe_append_element(list, item)
     end
 end
 
-function unsafe_append_list(interp::InterpPtr, list::ObjPtr, iter::Tuple)
-    for x in iter
-        unsafe_append_element(interp, list, x)
+# NOTE The computational burden of `Tcl_ListObjAppendElement` and
+# `Tcl_ListObjAppendList` is such that not incrementing and finally decrementing the
+# reference count of a wrapped object is a negligible optimization.
+function unsafe_append(f::Union{typeof(Tcl_ListObjAppendElement),
+                                typeof(Tcl_ListObjAppendList)},
+                       list::ObjPtr, arg)
+    assert_writable(list) # required by copy-on-write policy
+    objptr = if arg isa WrappedObject
+        unsafe_objptr(arg)
+    elseif arg isa Function
+        # Setting a callback involves (i) passing the name of the corresponding Tcl
+        # command and (ii) creating this command in the target interpreter if it
+        # does not exists.
+        tcl_error("appending a callback is not yet implemented")
+    else
+        Tcl_IncrRefCount(unsafe_objptr(arg))
     end
+    status = f(C_NULL, list, objptr)
+    arg isa WrappedObject || Tcl_DecrRefCount(objptr)
+    status == TCL_OK || tcl_error(f)
     return nothing
 end
+
+tcl_error(::typeof(Tcl_ListObjAppendElement)) =
+    tcl_error("failed to append item to Tcl list")
+
+tcl_error(::typeof(Tcl_ListObjAppendList)) =
+    tcl_error("failed to concatenate Tcl lists")

@@ -429,16 +429,14 @@ end
 
     # Lists.
     t = (1, "a b {c d}", 0)
-    x = @inferred interp.list(t...)
-    y = @inferred interp.concat(t...)
+    x = @inferred tcl_list(t...)
+    y = @inferred tcl_concat(t...)
     @test x isa TclObj
     @test x.type == :list
     @test length(x) == 3
     @test !isempty(x)
     @test y isa TclObj
     @test length(y) == 5
-    @test x == TclTk.list(t...)
-    @test y == TclTk.concat(t...)
 
     # Global variables.
     name, val = "some_name", -12345
@@ -741,7 +739,7 @@ end
     # Tcl "list".
     wa = ("", 1, "hello world!", (true, false), -3.75, π)
     wf = (1, "hello", "world!", true, false, -3.75, π) # "concat" version
-    wb = @inferred TclTk.list(wa...)
+    wb = @inferred tcl_list(wa...)
     wc = @inferred TclObj(wa)
     @test wb isa TclObj
     @test wc isa TclObj
@@ -775,7 +773,7 @@ end
     @test wb_3 == wc_4
 
     # Tcl "concat".
-    wd = @inferred TclTk.concat(wa...)
+    wd = @inferred tcl_concat(wa...)
     @test wd isa TclObj
     @test wd.type == :list
     @test @inferred(length(wd)) == length(wf)

@@ -21,6 +21,8 @@ Versioning](https://semver.org).
 - `w.rgb(color)` with `w` a widget now return an `RGB{N0f16}` value instead of a triplet of
   `UInt16`.
 
+- `TclTk.list` is now `tcl_list`, `TclTk.concat` is now `tcl_concat`.
+
 ### Added
 
 - New `wm` function for interacting with the window manager. This function accepts

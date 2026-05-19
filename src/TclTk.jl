@@ -68,31 +68,32 @@ include("types.jl")
 include("api.jl")
 include("dialogs.jl")
 include("Core.jl")
-#FIXME @reexport import .Core:
-    #FIXME Button,
-    #FIXME Canvas,
-    #FIXME Checkbutton,
-    #FIXME Combobox,
-    #FIXME Entry,
-    #FIXME Frame,
-    #FIXME Label,
-    #FIXME Labelframe,
-    #FIXME Listbox,
-    #FIXME Menu,
-    #FIXME Menubutton,
-    #FIXME Message, # use Ttk.Label
-    #FIXME Notebook,
-    #FIXME Panedwindow,
-    #FIXME Progressbar,
-    #FIXME Radiobutton,
-    #FIXME Scale,
-    #FIXME Scrollbar,
-    #FIXME Separator,
-    #FIXME Sizegrip,
-    #FIXME Spinbox,
-    #FIXME Text,
-    #FIXME Toplevel,
-    #FIXME Treeview
+@reexport import .Core:
+    Button,
+    Canvas,
+    Checkbutton,
+    Combobox,
+    Entry,
+    Frame,
+    Label,
+    Labelframe,
+    Listbox,
+    Menu,
+    Menubutton,
+    Message, # use Ttk.Label
+    Notebook,
+    Panedwindow,
+    Progressbar,
+    Radiobutton,
+    Scale,
+    Scrollbar,
+    Separator,
+    Sizegrip,
+    Spinbox,
+    Text,
+    Toplevel,
+    Treeview
+
 #FIXME # Non-exported public symbols.
 #FIXME for sym in (
 #FIXME     # Modules.

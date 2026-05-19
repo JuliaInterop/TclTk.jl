@@ -16,9 +16,11 @@ using ..TclTk:
 # Import public symbols that are implemented or extended in this module.
 import ..TclTk:
     # Constructors.
+    TclCallback,
     TclObj,
     TclVariable,
-    TclCallback,
+    TkImage,
+    TkWidget,
 
     # Tcl methods.
     tcl_concat,
@@ -117,7 +119,7 @@ include("interp.jl")
 include("variables.jl")
 include("callbacks.jl")
 include("colors.jl")
-#include("widgets.jl")
+include("widgets.jl")
 #include("images.jl")
 #include("wm.jl")
 

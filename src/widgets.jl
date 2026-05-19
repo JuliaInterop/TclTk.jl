@@ -54,12 +54,12 @@ function register_widget_class(class::Union{Symbol,AbstractString}, ::Type{T}) w
     return nothing
 end
 
-function widget_constructor_from_path(interp::TclInterp, path::Name) # FIXME
-    return widget_constructor_from_class(winfo_class(interp, path))
+function widget_constructor_from_path(path::Name)
+    return widget_constructor_from_class(winfo_class(path))
 end
 
 function widget_constructor_from_class(class::Name)
-    # In the database of widget classes, the class is a string.
+    # In the database of widget classes, the class is a symbol.
     class isa Symbol || (class = Symbol(class)::Symbol)
     constructor = get(widget_classes, class, nothing)
     isnothing(constructor) && argument_error("unregistered widget class \"$class\"")
@@ -236,12 +236,9 @@ class of the Tk window.
 function TkWidget(path::Name)
     # The following requires that `path` be a Tcl object or a string, not a symbol.
     (path isa Union{AbstractString,TclObj}) || (path = String(path)::String)
-    T = tcl_call() do interp
-        winfo_exists(interp, path) || argument_error(
-            "\"$path\" is not the path of an existing Tk widget")
-        # Now we can get the widget class and hence find its registered constructor.
-        return widget_constructor_from_path(interp, path)
-    end
+    winfo_exists(path) || argument_error(
+        "\"$path\" is not the path of an existing Tk widget")
+    T = widget_constructor_from_path(path)
     return T(Verified(path))
 end
 
@@ -461,40 +458,30 @@ isrootwidget(path::Name) = path == "."
 isrootwidget(w::Toplevel) = isrootwidget(w.path)
 isrootwidget(w::TkWidget) = false
 
-# Supply interpreter.
-function build(::Type{T}, class::Symbol, command::String, prefix::String,
-               pairs::Pair...; kwds...) where {T<:TkWidget}
-    return build(T, class, command, prefix, TclInterp(), pairs...; kwds...)
-end
-function build(::Type{T}, class::Symbol, command::String, prefix::String,
-               path::Name, pairs::Pair...; kwds...) where {T<:TkWidget}
-    return build(T, class, command, prefix, TclInterp(), path, pairs...; kwds...)
-end
-
 # Build a top-level widget with automatic name.
 function build(::Type{T}, class::Symbol, command::String, prefix::String,
-               interp::TclInterp, pairs::Pair...; kwds...) where {T<:TkWidget}
+               pairs::Pair...; kwds...) where {T<:TkWidget}
     startswith(prefix, '.') || argument_error("missing parent widget")
-    path = interp(TclObj, command, widget_auto_path(interp, "", prefix), pairs...; kwds...)
-    return T(interp, Verified(path))
+    path = tcl_exec(TclObj, command, widget_auto_path("", prefix), pairs...; kwds...)
+    return T(Verified(path))
 end
 
 # Build a widget given its full path.
 function build(::Type{T}, class::Symbol, command::String, prefix::String,
-               interp::TclInterp, path::Name, pairs::Pair...; kwds...) where {T<:TkWidget}
-    if winfo_exists(interp, path)
+               path::Name, pairs::Pair...; kwds...) where {T<:TkWidget}
+    if winfo_exists(path)
         # Re-use existing widget.
-        trueclass = winfo_class(interp, path)
+        trueclass = winfo_class(path)
         class == trueclass || argument_error(
             "attempt to wrap a widget with class `", class, "` on top of existing widget \"",
             path, "\" whose class is `", trueclass, "`")
-        w = T(interp, Verified(path))
+        w = T(Verified(path))
         (isempty(pairs) && isempty(kwds)) || w.configure(pairs...; kwds...)
         return w
     else
         # Create a new widget.
-        path = interp(TclObj, command, path, pairs...; kwds...)
-        return T(interp, Verified(path))
+        path = tcl_exec(TclObj, command, path, pairs...; kwds...)
+        return T(Verified(path))
     end
 end
 
@@ -506,19 +493,18 @@ function build(::Type{T}, class::Symbol, command::String, prefix::String,
         "invalid widget child name \"$name\"")
     root = String(parent.path)::String
     path = (root == "." ? root*name : root*"."*name)::String
-    return build(T, class, command, prefix, parent.interp, path, pairs...; kwds...)
+    return build(T, class, command, prefix, path, pairs...; kwds...)
 end
 
 # Build a child widget given its parent and with automatic name.
 function build(::Type{T}, class::Symbol, command::String, prefix::String,
                parent::TkWidget, pairs::Pair...; kwds...) where {T<:TkWidget}
-    interp = parent.interp
-    path = widget_auto_path(interp, String(parent.path)::String, prefix)
-    return build(T, class, command, prefix, interp, path, pairs...; kwds...)
+    path = widget_auto_path(String(parent.path)::String, prefix)
+    return build(T, class, command, prefix, path, pairs...; kwds...)
 end
 
 # Return the path of a non-existing widget.
-function widget_auto_path(interp::TclInterp, parent::String, prefix::String)
+function widget_auto_path(parent::String, prefix::String)
     i, j = firstindex(prefix), lastindex(prefix)
     key = SubString(prefix, (i ≤ j && prefix[i] == '.' ? nextind(prefix, i) : i), j)
     base = (parent == "." ? "."*key : parent*"."*key)::String
@@ -527,7 +513,7 @@ function widget_auto_path(interp::TclInterp, parent::String, prefix::String)
     while true
         # NOTE `s*string(i)` is faster than `string(s,i)` or, equivalently, `"$s$i"
         path = base*string(n)
-        if !winfo_exists(interp, path)
+        if !winfo_exists(path)
             auto_name_dict[key] = n
             return path
         end

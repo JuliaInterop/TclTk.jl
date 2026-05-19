@@ -10,21 +10,14 @@ const PhotoColorant = Union{Gray{N0f8},GrayA{N0f8},AGray{N0f8},
                             BGR{N0f8},BGRA{N0f8},ABGR{N0f8}}
 
 """
-    TkImage{type}(host=TclInterp(), pairs...; kwds...) -> img
-    TkImage{type}(host=TclInterp(), name, pairs...; kwds...) -> img
+    TkImage{type}(pairs...; kwds...) -> img
+    TkImage{type}(name, pairs...; kwds...) -> img
 
 Return a Tk image of given `type` (e.g., `:bitmap` or `:photo`).
 
-!!! note
-    `Tk` extension must have been loaded in the interpreter before creating an image.
-    This can be done with [`tk_start`](@ref).
-
-Argument `hosts` is used to infer the Tcl interpreter where lives the image (the shared
-interpreter of the thread by default). If `host` is a Tk widget, its interpreter is used.
-
 If the image `name` is omitted, it is automatically generated. If `name` is specified and an
-image with this name already exists in the interpreter, it is re-used and, if options are
-specified, it is reconfigured.
+image with this name already exists, it is re-used and, if options are specified, it is
+reconfigured.
 
 Trailing `pairs...` arguments and keywords `kwds...` are interpreted as image configuration
 options. Possible options depend on the image types.
@@ -47,7 +40,6 @@ img.size     # (width, height)
 size(img)    # idem
 img.type     # the symbolic type of the image (`:bitmap`, `:photo`, etc.)
 img.name     # the image name in its interpreter
-img.interp   # the interpreter hosting the image
 ```
 
 # See also
@@ -58,90 +50,55 @@ img.interp   # the interpreter hosting the image
 
 """
 function TkImage{type}(pairs::Pair...; kwds...) where {type}
-    return TkImage{type}(TclInterp(), pairs...; kwds...)
+    # Create a new image of a given type and automatically named.
+    type isa Symbol || argument_error("image type must be a symbol")
+    name = tcl_exec(TclObj, :image, :create, type, pairs...; kwds...)
+    return TkImage{type}(Verified(name))
 end
+
 function TkImage{type}(name::Name, pairs::Pair...; kwds...) where {type}
-    return TkImage{type}(TclInterp(), name, pairs...; kwds...)
-end
-function TkImage{type}(w::TkWidget, pairs::Pair...; kwds...) where {type}
-    return TkImage{type}(w.interp, name, pairs...; kwds...)
-end
-function TkImage{type}(w::TkWidget, name::Name, pairs::Pair...; kwds...) where {type}
-    return TkImage{type}(w.interp, name, pairs...; kwds...)
-end
-
-# Create a new image of a given type and automatically named.
-function TkImage{type}(interp::TclInterp, pairs::Pair...; kwds...) where {type}
+    # Create a new image of a given type and name. If an image of the same name already
+    # exists, it is re-wrapped.
     type isa Symbol || argument_error("image type must be a symbol")
-    name = interp(TclObj, :image, :create, type, pairs...; kwds...)
-    return TkImage{type}(interp, Verified(name))
-end
-
-# Create a new image of a given type and name. If an image of the same name already exists,
-# it is re-wrapped.
-TkImage{type}(interp::TclInterp, name::Name, pairs::Pair...; kwds...) where {type} =
-    TkImage{type}(interp, TclObj(name), pairs...; kwds...)
-
-function TkImage{type}(interp::TclInterp, name::TclObj, pairs::Pair...; kwds...) where {type}
-    type isa Symbol || argument_error("image type must be a symbol")
-    if interp(TclStatus, :image, :type, name) == TCL_OK
-        # Image already exists. Possibly configure it and re-wrap it.
-        interp.result(TclObj) == type || tcl_error(
-            "image already exists with a different type")
-        (isempty(pairs) && isempty(kwds)) || interp(name, :configure, pairs...; kwds...)
-    else
-        # Image does not exists. Create a new one and wrap it.
-        interp(:image, :create, type, name, pairs...; kwds...)
-    end
-    return TkImage{type}(interp, Verified(name))
+    name = tcl_exec(TclObj, "::_jl::config_or_create_image", type, name, pairs...; kwds...)
+    return TkImage{type}(Verified(name))
 end
 
 """
-    TkImage(host=TclInterp(), name, pairs...; kwds...) -> img
+    TkImage(name, pairs...; kwds...) -> img
 
 Return an instance of `TkImage` managing Tk image named `name` in the Tcl interpreter
 specified by `host` (can be a Tk widget) and after applying any options specified by
 `pairs...` and `kwds...`.
 
 """
-TkImage(name::Name, pairs::Pair...; kwds...) = TkImage(TclInterp(), name, pairs...; kwds...)
-TkImage(w::TkWidget, name::Name, pairs::Pair...; kwds...) =
-    TkImage(w.interp, name, pairs...; kwds...)
-TkImage(interp::TclInterp, name::Name, pairs::Pair...; kwds...) =
-    TkImage(interp, TclObj(name), pairs...; kwds...)
-function TkImage(interp::TclInterp, name::TclObj, pairs::Pair...; kwds...)
-    type = interp(String, :image, :type, name)
+TkImage(name::Name, pairs::Pair...; kwds...) = TkImage(TclObj(name), pairs...; kwds...)
+function TkImage(name::TclObj, pairs::Pair...; kwds...)
+    type = tcl_exec(Symbol, :image, :type, name)
     (isempty(pairs) && isempty(kwds)) || interp(name, :configure, pairs...; kwds...)
-    return TkImage{Symbol(type)}(interp, Verified(name))
+    return TkImage{type}(Verified(name))
 end
 
 """
-    TkPhoto(host=TclInterp(), [name,] arr::AbstractMatrix) -> img
+    TkPhoto([name,] arr::AbstractMatrix) -> img
 
-Return an instance of `TkImage` in the Tcl interpreter specified by `host` (can be a Tk
-widget) and whose pixels are set with the values of `arr`. Optional `name` argument is to
-specify the image's name.
+Return an instance of `TkImage{:photo}` whose pixels are set with the values of `arr`.
+Optional `name` argument is to specify the image's name.
 
 """
-TkPhoto(arr::AbstractMatrix{<:Colorant}) = TkPhoto(TclInterp(), arr)
-TkPhoto(w::TkWidget, arr::AbstractMatrix{<:Colorant}) = TkPhoto(w.interp, arr)
-function TkPhoto(interp::TclInterp, arr::AbstractMatrix{<:Colorant})
+function TkPhoto(arr::AbstractMatrix{<:Colorant})
     (width, height) = size(arr)
-    img = TkPhoto(interp, width = width, height = height)
+    img = TkPhoto(width = width, height = height)
     img[:,:] = arr
     return img
 end
 
-TkPhoto(name::Name, arr::AbstractMatrix{<:Colorant}) = TkPhoto(TclInterp(), name, arr)
-TkPhoto(w::TkWidget, name::Name, arr::AbstractMatrix{<:Colorant}) = TkPhoto(w.interp, name, arr)
-function TkPhoto(interp::TclInterp, name::Name, arr::AbstractMatrix{<:Colorant})
+function TkPhoto(name::Name, arr::AbstractMatrix{<:Colorant})
     (width, height) = size(arr)
-    img = TkPhoto(interp, name, width = width, height = height)
+    img = TkPhoto(name, width = width, height = height)
     img[:,:] = arr
     return img
 end
-
-TclInterp(img::TkImage) = img.interp
 
 # For Tcl, an image is identified by its name.
 TclObj(img::TkImage) = img.name
@@ -165,32 +122,30 @@ function Base.show(io::IO, img::T) where {T<:TkImage}
 end
 
 for f in (:isequal, :(==))
-    @eval function Base.$f(a::T, b::T) where {T<:TkImage}
-        return $f(a.interp, b.interp) && $f(a.name, b.name)
+    @eval begin
+        Base.$f(a::T, b::T) where {T<:TkImage} = $f(a.name, b.name)
+        Base.$f(a::TkImage, b::TkImage) = false
     end
 end
 
 #---------------------------------------------------------------------- Image sub-commands -
 
 # Make Tk image objects callable to evaluate sub-commands.
-(img::TkImage)(args...; kwds...) = exec(img.interp, img, args...; kwds...)
-(img::TkImage)(::Type{T}, args...; kwds...) where {T} =
-    exec(T, img.interp, img, args...; kwds...)
+(img::TkImage)(args...; kwds...) = tcl_exec(img, args...; kwds...)
+(img::TkImage)(::Type{T}, args...; kwds...) where {T} = tcl_exec(T, img, args...; kwds...)
 
 #-------------------------------------------------------------------------- Image commands -
 
 # Reproduce Tk `image command ...`.
-for (prop, type) in (:delete => :Nothing,
-                     :height => :Int,
-                     :inuse  => :Bool,
-                     :type   => :TclObj,
-                     :width  => :Int,
-                     )
+for (prop, T) in (:delete => :Nothing,
+                  :height => :Int,
+                  :inuse  => :Bool,
+                  :type   => :TclObj,
+                  :width  => :Int,
+                  )
     func = Symbol("image_", prop)
     @eval begin
-        $func(img::TkImage) = $func(img.interp, img.name)
-        $func(interp::TclInterp, name::Name) =
-            interp.exec($type, :image, $(QuoteNode(prop)), name)
+        $func(img::TkImage) = tcl_exec($T, :image, $(QuoteNode(prop)), img)
     end
 end
 
@@ -882,7 +837,7 @@ end
 
 unsafe_find_photo(img::TkPhoto) = unsafe_find_photo(img.interp, img.name)
 
-function unsafe_find_photo(interp::Union{TclInterp,InterpPtr}, name::Name)
+function unsafe_find_photo(interp::Ptr{Tcl_Interp}, name::Name)
     handle = Tk_FindPhoto(interp, name)
     isnull(handle) && TclError("invalid image name")
     return handle
@@ -927,7 +882,7 @@ for (jfunc, (cfunc, mesg)) in (:unsafe_photo_set_size! => (:Tk_PhotoSetSize,
 end
 
 unsafe_photo_get_image(img::TkPhoto) = unsafe_photo_get_image(unsafe_find_photo(img))
-unsafe_photo_get_image(interp::Union{TclInterp,InterpPtr}, name::Name) =
+unsafe_photo_get_image(interp::Ptr{Tcl_Interp}, name::Name) =
     unsafe_photo_get_image(unsafe_find_photo(interp, name))
 function unsafe_photo_get_image(handle::Tk_PhotoHandle)
     block = Ref{Tk_PhotoImageBlock}()
@@ -941,7 +896,7 @@ function unsafe_photo_put_block(img::TkPhoto,
                                 height::Integer, compRule::Integer)
     unsafe_photo_put_block(img.interp, img.name, block, x, y, width, height, compRule)
 end
-function unsafe_photo_put_block(interp::Union{TclInterp,InterpPtr}, name::Name,
+function unsafe_photo_put_block(interp::Ptr{Tcl_Interp}, name::Name,
                                 block::Tk_PhotoImageBlock,
                                 x::Integer, y::Integer, width::Integer,
                                 height::Integer, compRule::Integer)
@@ -961,7 +916,7 @@ function unsafe_photo_put_zoomed_block(img::TkPhoto,
     unsafe_photo_put_zoomed_block(img.interp, img.name, block, x, y, width, height,
                                   zoomX, zoomY, subsampleX, subsampleY, compRule)
 end
-function unsafe_photo_put_zoomed_block(interp::Union{TclInterp,InterpPtr}, name::Name,
+function unsafe_photo_put_zoomed_block(interp::Ptr{Tcl_Interp}, name::Name,
                                        block::Tk_PhotoImageBlock,
                                        x::Integer, y::Integer,
                                        width::Integer, height::Integer,

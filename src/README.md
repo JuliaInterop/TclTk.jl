@@ -58,7 +58,7 @@ from Tcl interpreter result. Therefore, automatic conversion of a Tcl object int
 value/object would not be type-stable and is not implemented. However, conversion to a given
 type is implemented at different levels:
 
-* At low level, private method, `TclTk.Impl.unsafe_convert(T, ptr)` can be called to convert
+* At low level, private method, `TclTk.Core.unsafe_convert(T, ptr)` can be called to convert
   Tcl object pointer `ptr` into a Julia value of given type `T`. `ptr` may also be a pointer
   to a Tcl interpreter to convert its result. Conversion by `T(ptr)` and `convert(T, ptr)`
   is not extended to not break pointer arithmetic and because they would be *unsafe*.
@@ -289,7 +289,7 @@ string representation (according to Tcl) and decrement its reference count
 (thus freeing the memory):
 
     function tclstr(str::String)
-        ptr = TclTk.Impl.__newobj(str)
+        ptr = TclTk.Core.__newobj(str)
         TclTk.Imp.Tcl_IncrRefCount(ptr)
         result = unsafe_string(ccall((:Tcl_GetString, TclTk.libtcl), Cstring,
                                      (Ptr{Void},), obj.ptr))

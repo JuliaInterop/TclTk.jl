@@ -40,16 +40,6 @@ tcl_unsetvar
 TclTk.Callback
 ```
 
-## Events
-
-```@docs
-tk_start
-TclTk.do_events
-TclTk.do_one_event
-TclTk.resume
-TclTk.suspend
-```
-
 ## Widgets
 
 ```@docs
@@ -78,18 +68,18 @@ Spinbox
 TclTk.Text
 Toplevel
 Treeview
-TclTk.cget
-TclTk.configure
-TclTk.winfo
+tk_cget
+tk_configure
+tk_winfo
 ```
 
 ## Window and geometry managers
 
 ```@docs
-TclTk.grid
-TclTk.pack
-TclTk.place
-wm
+tk_grid
+tk_pack
+tk_place
+tk_wm
 ```
 
 ## Images

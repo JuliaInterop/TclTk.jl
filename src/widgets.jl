@@ -25,9 +25,8 @@ macro TkWidget(structname, class, command, prefix)
     quote
         # Define structure an inner constructor.
         struct $type <: TkWidget
-            interp::TclInterp
             path::TclObj # Tk window path and Tcl widget command
-            $type(interp::TclInterp, path::Verified{<:Name}) = new(interp, path.value)
+            $type(path::Verified{<:Name}) = new(path.value)
         end
 
         # Build instance.
@@ -55,7 +54,7 @@ function register_widget_class(class::Union{Symbol,AbstractString}, ::Type{T}) w
     return nothing
 end
 
-function widget_constructor_from_path(interp::TclInterp, path::Name)
+function widget_constructor_from_path(interp::TclInterp, path::Name) # FIXME
     return widget_constructor_from_class(winfo_class(interp, path))
 end
 
@@ -118,11 +117,10 @@ leading hyphen and, if the option is specified by a pair, is a string or a symbo
 
 The constructor may also wrap an existing $(name) widget in a `$(constructor)` structure:
 
-    w = $(constructor)(interp=TclInterp(), path, pairs::Pair...; kwds...)
+    w = $(constructor)(path, pairs::Pair...; kwds...)
 
-where `interp` is the Tcl interpreter where lives the widget and `path` is the full path of
-the widget. If any configurable options are specified, they are applied to the existing
-widget.
+where `path` is the full path of the widget and `pairs...` denotes optional configurable
+options which are applied to the existing widget.
 
 """
 end
@@ -197,10 +195,9 @@ Text
 Treeview
 
 """
-    w = Toplevel(interp=TclInterp(), [path,] pairs::Pair...; kwds...)
+    w = Toplevel([path,] pairs::Pair...; kwds...)
 
-Create or wrap a *top-level* widget living in `interp` interpreter. This also takes care of
-loading the Tk extension in the interpreter and of starting the event loop.
+Create or wrap a *top-level* Tk widget.
 
 Optional argument `path` is the full path of the widget relative to its parent path; if not
 specified, a unique path is automatically generated. If `path` is specified and corresponds
@@ -224,39 +221,38 @@ creates a new top-level widget in while
 main = Toplevel(".")
 ```
 
-returns the main Tk window for Tcl interpreter `interp`. No interpreter being specified,
-both `top` and `main` live in the shared Tcl interpreter of the thread.
+returns the main Tk window.
 
 """
 Toplevel
 
 """
-    TkWidget(interp=TclInterp(), path)
+    TkWidget(path)
 
-Return a widget for the given Tk window `path` in interpreter `interp`. The type of the
-widget is inferred from the class of the Tk window.
+Return a widget for the given Tk window `path`. The type of the widget is inferred from the
+class of the Tk window.
 
 """
-TkWidget(path::Name, interp::TclInterp = TclInterp()) = TkWidget(interp, path)
-function TkWidget(interp::TclInterp, path::Name)
+function TkWidget(path::Name)
     # The following requires that `path` be a Tcl object or a string, not a symbol.
     (path isa Union{AbstractString,TclObj}) || (path = String(path)::String)
-    winfo_exists(interp, path) || argument_error(
-        "\"$path\" is not the path of an existing Tk widget")
-    # Now we can get the widget class and hence find its registered constructor.
-    T = widget_constructor_from_path(interp, path)
-    return T(interp, Verified(path))
+    T = tcl_call() do interp
+        winfo_exists(interp, path) || argument_error(
+            "\"$path\" is not the path of an existing Tk widget")
+        # Now we can get the widget class and hence find its registered constructor.
+        return widget_constructor_from_path(interp, path)
+    end
+    return T(Verified(path))
 end
 
 """
-    TclTk.winfo(T=TclObj, interp=TclInterp(), what, args...) -> res::T
+    TclTk.winfo(T=TclObj, what, args...) -> res::T
 
 Return information `what` related to Tk window(s) as a value of type `T`.
 
 """
-winfo(interp::TclInterp, what::Name, args...) = winfo(TclObj, interp, what, args...)
-winfo(::Type{T}, interp::TclInterp, what::Name, args...) where {T} =
-    interp(T, "::winfo", what, args...)
+winfo(what::Name, args...) = winfo(TclObj, what, args...)
+winfo(::Type{T}, what::Name, args...) where {T} = tcl_exec(T, "::winfo", what, args...)
 
 """
     TclTk.winfo(T=TclObj, w::TkWidget, what) -> res::T
@@ -265,58 +261,53 @@ Return information `what` related to widget `w` as a value of type `T`.
 
 """
 winfo(w::TkWidget, what::Name) = winfo(what, w)
-winfo(what::Name, w::TkWidget) = winfo(TclObj, w, what)
+winfo(what::Name, w::TkWidget) = winfo(TclObj, what, w)
 winfo(::Type{T}, w::TkWidget, what::Name) where {T} = winfo(T, what, w)
-winfo(::Type{T}, what::Name, w::TkWidget) where {T} = winfo(T, w.interp, what, w.path)
+winfo(::Type{T}, what::Name, w::TkWidget) where {T} = winfo(T, what, w)
 
-winfo_exists(w::TkWidget) = winfo_exists(w.interp, w.path)
-winfo_exists(interp::TclInterp, path::Name) = winfo(Bool, interp, :exists, path)
+winfo_exists(w::Union{TkWidget,Name}) = winfo(Bool, :exists, w)
+winfo_parent(w::Union{TkWidget,Name}) = winfo(String, :parent, w)
+winfo_name(w::Union{TkWidget,Name}) = winfo(String, :name, w)
 
-winfo_parent(w::TkWidget) = winfo_parent(w.interp, w.path)
-winfo_parent(interp::TclInterp, path::Name) = winfo(String, interp, :parent, path)
-
-winfo_name(w::TkWidget) = winfo_name(w.interp, w.path)
-winfo_name(interp::TclInterp, path::Name) = winfo(String, interp, :name, path)
-
-winfo_class(w::TkWidget) = winfo_class(w.interp, w.path)
-function winfo_class(interp::TclInterp, path::Name)
+winfo_class(w::TkWidget) = winfo_class(w.path)
+function winfo_class(path::Name)
     # `winfo class .` yields the name of the application which is not what we want. So, we
     # must specifically consider the case of the "." window.
-    return isrootwidget(path) ? :Toplevel : winfo(Symbol, interp, :class, path)
-    # TODO for Tix widgets, we may instead use: class = string(interp(path, :configure, "-class")[4])
+    return isrootwidget(path) ? :Toplevel : winfo(Symbol, :class, path)
+    # TODO for Tix widgets, we may instead use:
+    # class = string(tcl_exec(path, :configure, "-class")[4])
 end
 
-winfo_interps(w::TkWidget) =
-    winfo(Vector{String}, w.interp, :interps, "-displayof", w)
+winfo_interps(w::Union{TkWidget,Name}) = winfo(Vector{String}, :interps, "-displayof", w)
 
-winfo_visualsavailable(w::TkWidget) =
-    winfo(Vector{Tuple{Symbol,Int}}, w.interp, :visualsavailable, w)
+winfo_visualsavailable(w::Union{TkWidget,Name}) =
+    winfo(Vector{Tuple{Symbol,Int}}, :visualsavailable, w)
 
-winfo_visualsavailable_includeids(w::TkWidget) =
-     winfo(Vector{Tuple{Symbol,Int,UInt32}}, w.interp, :visualsavailable, w, :includeids)
+winfo_visualsavailable_includeids(w::Union{TkWidget,Name}) =
+     winfo(Vector{Tuple{Symbol,Int,UInt32}}, :visualsavailable, w, :includeids)
 
-winfo_atom(w::TkWidget) = PrefixedFunction(winfo_atom, w)
-winfo_atom(w::TkWidget, name) = winfo(UInt32, w.interp, :atom, "-displayof", w, name)
+winfo_atom(w::Union{TkWidget,Name}) = PrefixedFunction(winfo_atom, w)
+winfo_atom(w::Union{TkWidget,Name}, name) = winfo(UInt32, :atom, "-displayof", w, name)
 
-winfo_atomname(w::TkWidget) = PrefixedFunction(winfo_atomname, w)
-winfo_atomname(w::TkWidget, id) = winfo(String, w.interp, :atomname, "-displayof", w, id)
+winfo_atomname(w::Union{TkWidget,Name}) = PrefixedFunction(winfo_atomname, w)
+winfo_atomname(w::Union{TkWidget,Name}, id) = winfo(String, :atomname, "-displayof", w, id)
 
-winfo_containing(w::TkWidget) = PrefixedFunction(winfo_containing, w)
-winfo_containing(w::TkWidget, rootx, rooty) =
-     winfo(String, w.interp, :containing, "-displayof", w, rootx, rooty)
+winfo_containing(w::Union{TkWidget,Name}) = PrefixedFunction(winfo_containing, w)
+winfo_containing(w::Union{TkWidget,Name}, rootx, rooty) =
+     winfo(String, :containing, "-displayof", w, rootx, rooty)
 
-winfo_fpixels(w::TkWidget) = PrefixedFunction(winfo_fpixels, w)
-winfo_fpixels(w::TkWidget, number) = winfo(Float64, w.interp, :fpixels, w, number)
+winfo_fpixels(w::Union{TkWidget,Name}) = PrefixedFunction(winfo_fpixels, w)
+winfo_fpixels(w::Union{TkWidget,Name}, number) = winfo(Float64, :fpixels, w, number)
 
-winfo_pathname(w::TkWidget) = PrefixedFunction(winfo_pathname, w)
-winfo_pathname(w::TkWidget, id) = winfo(String, w.interp, :pathname, "-displayof", w, id)
+winfo_pathname(w::Union{TkWidget,Name}) = PrefixedFunction(winfo_pathname, w)
+winfo_pathname(w::Union{TkWidget,Name}, id) = winfo(String, :pathname, "-displayof", w, id)
 
-winfo_pixels(w::TkWidget) = PrefixedFunction(winfo_pixels, w)
-winfo_pixels(w::TkWidget, number) = winfo(Int, w.interp, :pixels, w, number)
+winfo_pixels(w::Union{TkWidget,Name}) = PrefixedFunction(winfo_pixels, w)
+winfo_pixels(w::Union{TkWidget,Name}, number) = winfo(Int, :pixels, w, number)
 
-winfo_rgb(w::TkWidget) = PrefixedFunction(winfo_rgb, w)
-winfo_rgb(w::TkWidget, color) = reinterpret_as_colorant(
-    winfo(NTuple{3,UInt16}, w.interp, :rgb, w, color))
+winfo_rgb(w::Union{TkWidget,Name}) = PrefixedFunction(winfo_rgb, w)
+winfo_rgb(w::Union{TkWidget,Name}, color) = reinterpret_as_colorant(
+    winfo(NTuple{3,UInt16}, :rgb, w, color))
 
 const WINFO = (
     :atom             => (false, typeof(winfo_atom)),
@@ -332,7 +323,6 @@ const WINFO = (
     :geometry         => (true,  String), # TODO parse "widthxheight+x+y" in pixels
     :height           => (true,  Int),
     :id               => (true,  UInt),
-    :interp           => (true,  typeof(getfield)),
     :interps          => (true,  typeof(winfo_interps)),
     :ismapped         => (true,  Bool),
     :manager          => (true,  Symbol),
@@ -457,7 +447,7 @@ end
 
 
 """
-    TclTk.Impl.isrootwidget(w) -> bool
+    TclTk.Core.isrootwidget(w) -> bool
 
 Return whether `w` is the Tk root widget of window path.
 
@@ -466,7 +456,7 @@ specifically. For example, `winfo parent .` yields an empty result while `winfo 
 yields the name of the application.
 
 """
-isrootwidget(path::Symbol) = (path == :(.))
+isrootwidget(path::Symbol) = path === :(.)
 isrootwidget(path::Name) = path == "."
 isrootwidget(w::Toplevel) = isrootwidget(w.path)
 isrootwidget(w::TkWidget) = false
@@ -549,19 +539,11 @@ function widget_auto_path(interp::TclInterp, parent::String, prefix::String)
 end
 
 # Accessors.
-TclInterp(w::TkWidget) = w.interp
 Base.parent(w::TkWidget) = winfo_parent(w)
 TclObj(w::TkWidget) = w.path
 Base.convert(::Type{TclObj}, w::TkWidget) = TclObj(w)::TclObj
 # FIXME Base.convert(::Type{String}, w::TkWidget) = ...
 unsafe_objptr(w::TkWidget) = unsafe_objptr(TclObj(w), "Tk widget") # used in `exec`
-
-exec(w::TkWidget, args...; kwds...) =
-    exec(w.interp, w.path, args...; kwds...)
-exec(w::TkWidget, ::Type{T}, args...; kwds...) where {T} =
-    exec(T, w.interp, w.path, args...; kwds...)
-exec(::Type{T}, w::TkWidget, args...; kwds...) where {T} =
-    exec(T, w.interp, w.path, args...; kwds...)
 
 # We want to have the object type and path both printed in the REPL but want only the object
 # path with the `string` method or for string interpolation. Note that "$w" and `string(w)`
@@ -578,57 +560,10 @@ function Base.show(io::IO, w::T) where {T<:TkWidget}
 end
 
 for f in (:isequal, :(==))
-    @eval function Base.$f(a::T, b::T) where {T<:TkWidget}
-        return $f(a.interp, b.interp) && $f(a.path, b.path)
+    @eval begin
+        Base.$f(a::T, b::T) where {T<:TkWidget} = $f(a.path, b.path)
+        Base.$f(a::TkWidget, b::TkWidget) = false
     end
-end
-
-"""
-    tk_start(interp = TclInterp()) -> interp
-
-Ensure that Tk and Ttk packages are loaded in Tcl interpreter `interp` and that the event
-loop is started (for all Tcl interpreters). Return the Tcl interpreter. Once, Tk and Ttk
-packages have been loaded and the event loop started, calling `tk_start` is very fast.
-
-!!! note
-    `tk_start` also takes care of withdrawing the root window "." to avoid its destruction
-    as this would terminate the Tcl application. Execute Tcl command `wm deiconify .` to
-    show the root window again.
-
-# See also
-
-[`TclTk.resume`](@ref), [`TclInterp`](@ref), and [`TkWidget`](@ref).
-
-"""
-function tk_start(interp::TclInterp = TclInterp()) :: TclInterp
-    getfield(interp, :tkstarted) || force_tk_start(interp)
-    isrunning() || resume()
-    return interp
-end
-
-function force_tk_start(interp::TclInterp)
-    # Initialize Tcl interpreter to find Tk library scripts. NOTE this is the same as
-    # initializing global variable `tcl_library` before calling `Tcl_Init`.
-    if isdefined(@__MODULE__, :Tk_jll)
-        tk_library = joinpath(dirname(dirname(Tk_jll.libtk_path)), "lib",
-                              "tk$(TCL_MAJOR_VERSION).$(TCL_MINOR_VERSION)")
-        ptr = Tcl_SetVar(interp, "tk_library", tk_library, TCL_GLOBAL_ONLY|TCL_LEAVE_ERR_MSG)
-        isnull(ptr) && @warn "Unable to set `tk_library`: $(getresult(String, interp))"
-    end
-    # Load Tk and Ttk packages. It is not needed to explicitly load these packages, it is
-    # sufficient to call `Tk_Init`.
-    status = @ccall libtk.Tk_Init(interp::Ptr{Tcl_Interp})::TclStatus
-    status == TCL_OK || @warn "Unable to initialize Tk interpreter: $(getresult(String, interp))"
-    status == TCL_OK && (status = interp(TclStatus, :wm, :withdraw, "."))
-    # Attempt to set the icon for top-level windows.
-    file = joinpath(@__DIR__, "logo.png")
-    ns = "::assets"
-    logo = "$(ns)::logo"
-    status == TCL_OK && (status = interp(TclStatus, :namespace, :eval, ns, ""))
-    status == TCL_OK && (status = interp(TclStatus, :image, :create, :photo, logo, file=file))
-    status == TCL_OK && (status = interp(TclStatus, :wm, :iconphoto, ".", "-default", logo))
-    setfield!(interp, :tkstarted, true)
-    return nothing
 end
 
 """
@@ -694,10 +629,9 @@ end
     TclTk.grid(args...)
 
 Call Tk *grid* geometry manager. One of the arguments must be a widget (that is an instance
-of `TkWidget`). All widgets in `args...` must live in the same interpreter.
+of `TkWidget`).
 
-
-To specify the gridding options for a single widget `w`, another possible syntax is:
+To specify the grid manager options for a single widget `w`, another possible syntax is:
 
     w.grid(args...; kwds...)
 
@@ -712,7 +646,7 @@ function grid end
     TclTk.pack(args...; kwds...)
 
 Call Tk *packer* geometry manager. One of the arguments must be a widget (that is an
-instance of `TkWidget`). All widgets in `args...` must live in the same interpreter.
+instance of `TkWidget`).
 
 To specify the packing options for a single widget `w`, another possible syntax is:
 
@@ -740,7 +674,7 @@ function pack end
     TclTk.place(args...; kwds..)
 
 Call Tk *placer* geometry manager. One of the arguments must be a widget (that is an
-instance of `TkWidget`). All widgets in `args...` must live in the same interpreter.
+instance of `TkWidget`).
 
 To specify the placing options for a single widget `w`, another possible syntax is:
 
@@ -757,22 +691,9 @@ for cmd in (:grid, :pack, :place)
     @eval begin
         $cmd(args...; kwds...) = $cmd(Nothing, args...; kwds...)
         function $cmd(::Type{T}, args...; kwds...) where {T}
-            interp = common_interpreter(nothing, args...)
-            interp == nothing && argument_error("missing a widget argument")
-            return exec(T, interp, $(QuoteNode(cmd)), args...; kwds...)
+            return tcl_exec(T, $(QuoteNode(cmd)), args...; kwds...)
         end
     end
-end
-
-common_interpreter() = nothing
-common_interpreter(interp::Union{Nothing,TclInterp}) = interp
-common_interpreter(interp::Union{Nothing,TclInterp}, arg::Any, args...) =
-    common_interpreter(interp, args...)
-common_interpreter(::Nothing, arg::TkWidget, args...) =
-    common_interpreter(arg.interp, args...)
-function common_interpreter(interp::TclInterp, arg::TkWidget, args...)
-    pointer(interp) == pointer(arg.interp) || argument_error("not all widgets have the same interpreter")
-    return common_interpreter(interp, args...)
 end
 
 # Base.bind is overloaded because it already exists for sockets, but there
@@ -799,16 +720,15 @@ For instance:
 
     bind(w, "<ButtonPress>", "+puts click")
 
-To deal with class bindings, the Tcl interpreter may be provided (otherwise the shared
-interpreter of the thread will be used):
+To deal with class bindings:
 
-    bind([interp,] classname, args...)
+    tcl_exec("::bind", classname, args...)
 
 where `classname` is the name of the widget class (a string or a symbol).
 
 """
 Base.bind(::Type{T}, w::TkWidget, args...) where {T} =
-    exec(T, w.interp, "::bind", w, args...)
+    tcl_exec(T, "::bind", w, args...)
 
 # Supply return type.
 Base.bind(w::TkWidget) = bind(TclObj, w)

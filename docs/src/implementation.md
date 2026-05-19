@@ -2,7 +2,7 @@
 
 ```julia
 module Tcl
-    module Impl
+    module Core
         # imports definitions from ..LibTcl and ..LibTk
         using ..LibTcl
         using ..LibTk

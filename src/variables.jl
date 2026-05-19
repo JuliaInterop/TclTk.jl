@@ -1,10 +1,3 @@
-# Flags for Tcl variables.
-const TCL_GLOBAL_ONLY    = Cint(1)
-const TCL_NAMESPACE_ONLY = Cint(2)
-const TCL_APPEND_VALUE   = Cint(4)
-const TCL_LIST_ELEMENT   = Cint(8)
-const TCL_LEAVE_ERR_MSG  = Cint(0x200)
-
 # Private type to have `tcl_getvar` yields whether the variable is assigned.
 struct _IsAssigned end
 

@@ -1,54 +1,5 @@
 # Useful methods for the Julia interface to Tcl/Tk.
 
-"""
-    tcl_version() -> num::VersionNumber
-    tcl_version(Tuple) -> (major, minor, patch, rtype)::NTuple{4,Cint}
-
-Return the full version of the Tcl C library.
-
-"""
-function tcl_version()
-    major, minor, patch, rtype = tcl_version(Tuple)
-    if rtype == TCL_ALPHA_RELEASE
-        return VersionNumber(major, minor, patch, ("alpha",))
-    elseif rtype == TCL_BETA_RELEASE
-        return VersionNumber(major, minor, patch, ("beta",))
-    elseif rtype != TCL_FINAL_RELEASE
-        @warn "unknown Tcl release type $rtype"
-    end
-    return VersionNumber(major, minor, patch)
-end
-
-function tcl_version(::Type{Tuple})
-    major = Ref{Cint}()
-    minor = Ref{Cint}()
-    patch = Ref{Cint}()
-    rtype = Ref{Cint}()
-    Tcl_GetVersion(major, minor, patch, rtype)
-    return (major[], minor[], patch[], rtype[])
-end
-
-"""
-    tcl_library(; relative::Bool=false) -> dir
-
-Return the Tcl library directory as inferred from the installation of the Tcl artifact. If
-keyword `relative` is `true`, the path relative to the artifact directory is returned;
-otherwise, the absolute path is returned.
-
-The Tcl library directory contains a library of Tcl scripts, such as those used for
-auto-loading. It is also given by the global variable `"tcl_library"` which can be retrieved
-by:
-
-    tcl_getvar(String, "tcl_library") -> dir
-
-"""
-function tcl_library(; relative::Bool=false)
-    major, minor, patch, rtype = tcl_version(Tuple)
-    path = joinpath("lib", "tcl$(major).$(minor)")
-    relative && return path
-    return joinpath(Tcl_jll.artifact_dir, path)
-end
-
 #-------------------------------------------------------------------------------- Pointers -
 
 Base.pointer(obj::TclObj) = getfield(obj, :ptr)
@@ -74,26 +25,26 @@ end
     "attempt to use a Tcl interpreter in a different thread"))
 
 """
-    TclTk.Impl.isnull(ptr) -> bool
+    TclTk.Core.isnull(ptr) -> bool
 
 Return whether pointer `ptr` is null.
 
 # See also
 
-[`TclTk.Impl.null`](@ref).
+[`TclTk.Core.null`](@ref).
 
 """
 isnull(ptr::Union{Ptr,Cstring}) = ptr === null(ptr)
 
 """
-    TclTk.Impl.null(ptr) -> nullptr
-    TclTk.Impl.null(typeof(ptr)) -> nullptr
+    TclTk.Core.null(ptr) -> nullptr
+    TclTk.Core.null(typeof(ptr)) -> nullptr
 
 Return a null-pointer of the same type as `ptr`.
 
 # See also
 
-[`TclTk.Impl.isnull`](@ref).
+[`TclTk.Core.isnull`](@ref).
 
 """
 null(ptr::Union{Ptr,Cstring}) = null(typeof(ptr))
@@ -132,55 +83,6 @@ SubCommand{C}(caller::W) where {C,W} = SubCommand{C,W}(caller)
 (f::SubCommand{C})(::Type{T}, args...; kwds...) where {C,T} =
     f.caller(T, C, args...; kwds...)
 
-#---------------------------------------------------------------------------- Quote string -
-
-"""
-    tcl_quote_string(str)
-
-Return string `str` a valid Tcl string surrounded by double quotes that can be directly
-inserted in Tcl scripts.
-
-This is similar to `escape_string` but specialized to represent a valid Tcl string
-surrounded by double quotes in a script.
-
-"""
-function tcl_quote_string(str::AbstractString)
-    esc = ('"', '{', '}')
-    io = IOBuffer()
-    print(io, '"')
-    for c::AbstractChar in str
-        if c ∈ esc
-            print(io, '\\', c)
-        elseif isascii(c)
-            if isprint(c)
-                if c == '\\'
-                    print(io, "\\\\")
-                else
-                    print(io, c)
-                end
-            elseif c == '\0'
-                print(io, "\300\200") # see man page of `Tcl_NewStringObj`
-            elseif c == '\e'
-                print(io, "\\e")
-            elseif '\a' <= c <= '\r'
-                print(io, '\\', "abtnvfr"[Int(c)-6])
-            else
-                print(io, "\\x", string(UInt32(c), base = 16, pad = 2))
-            end
-        elseif !Base.isoverlong(c) && !Base.ismalformed(c) && isprint(c)
-            print(io, c)
-        else # malformed, overlong, or not printable
-            u = bswap(reinterpret(UInt32, c)::UInt32)
-            while true
-                print(io, "\\x", string(u % UInt8, base = 16, pad = 2))
-                (u >>= 8) == 0 && break
-            end
-        end
-    end
-    print(io, '"')
-    return String(take!(io))
-end
-
 #-------------------------------------------------------------------------------- Booleans -
 
 """
@@ -205,7 +107,7 @@ end
 #------------------------------------------------------------------------ Automatic names -
 
 """
-    TclTk.Impl.auto_name(pfx = "jl_auto_")
+    TclTk.Core.auto_name(pfx = "jl_auto_")
 
 Return a unique name with given prefix. The result is a string of the form `pfx#` where `#`
 is a unique number.
@@ -223,26 +125,8 @@ const auto_name_dict = Dict{String,UInt64}()
 
 #---------------------------------------------------------------------------------- Errors -
 
-Base.showerror(io::IO, ex::TclError) = print(io, "Tcl/Tk error: ", ex.msg)
-
 """
-    TclError(args...)
-
-Return a `TclError` exception with error message given by `string(args...)`.
-
-"""
-@noinline TclError(arg, args...) = TclError(string(arg, args...))
-
-"""
-    tcl_error(args...)
-
-Throw a `TclError` exception with error message given by `string(args...)`.
-
-"""
-tcl_error(args...) = throw(TclError(args...))
-
-"""
-    TclTk.Impl.get_error_message(ex)
+    TclTk.Core.get_error_message(ex)
 
 Return the error message associated with exception `ex`.
 
@@ -259,7 +143,7 @@ get_error_message(ex::Exception) = sprint(io -> showerror(io, ex))
 @noinline dimension_mismatch(arg, args...) = dimension_mismatch(string(arg, args...))
 
 """
-    TclTk.Impl.unsafe_error(interp)
+    TclTk.Core.unsafe_error(interp)
 
 Throw a Tcl error with a message stored in the result of `interp`.
 
@@ -271,7 +155,7 @@ Throw a Tcl error with a message stored in the result of `interp`.
 @noinline unsafe_error(interp::InterpPtr) = tcl_error(unsafe_result(String, interp))
 
 """
-    TclTk.Impl.unsafe_error(interp, mesg)
+    TclTk.Core.unsafe_error(interp, mesg)
 
 Throw a Tcl error. The error message is given by the result of `interp` if it refers to a
 non-null Tcl interpreter with a non-empty result; otherwise, the error message is `mesg`.
@@ -282,7 +166,7 @@ non-null Tcl interpreter with a non-empty result; otherwise, the error message i
 
 # See also
 
-[`TclTk.Impl.unsafe_convert`](@ref) and [`TclTk.Impl.unsafe_result`](@ref).
+[`TclTk.Core.unsafe_convert`](@ref) and [`TclTk.Core.unsafe_result`](@ref).
 
 """
 @noinline unsafe_error(interp::InterpPtr, mesg::AbstractString) =

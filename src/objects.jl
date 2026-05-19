@@ -44,7 +44,7 @@ Tcl object may always be converted into a string by calling `convert(String, obj
 [`TclTk.list`](@ref) or [`TclTk.concat`](@ref) for building Tcl objects to efficiently store
 arguments of Tcl commands.
 
-Methods [`TclTk.Impl.new_object`](@ref) and [`TclTk.Impl.unsafe_convert`](@ref) may be
+Methods [`TclTk.Core.new_object`](@ref) and [`TclTk.Core.unsafe_convert`](@ref) may be
 extended to convert other types of value to Tcl object.
 
 """
@@ -322,8 +322,8 @@ function set_pointer!(obj::TclObj, newptr::ObjPtr)
 end
 
 """
-    TclTk.Impl.unsafe_objptr(arg) -> objptr
-    TclTk.Impl.unsafe_objptr(arg, descr) -> objptr
+    TclTk.Core.unsafe_objptr(arg) -> objptr
+    TclTk.Core.unsafe_objptr(arg, descr) -> objptr
 
 Return a pointer to a Tcl object from `arg`. If `arg` is an instance of `TclObj`,
 `pointer(arg)` is returned throwing an error if this pointer is null. Otherwise, a new Tcl
@@ -335,7 +335,7 @@ Optional `descr` provides a description of the argument `arg` for error messages
 
 # See also
 
-[`TclObj`](@ref), [`TclTk.Impl.WrappedObject`](@ref), and [`TclTk.Impl.new_object`](@ref),
+[`TclObj`](@ref), [`TclTk.Core.WrappedObject`](@ref), and [`TclTk.Core.new_object`](@ref),
 
 """
 unsafe_objptr(obj::TclObj) = checked_pointer(obj)
@@ -452,21 +452,21 @@ function unsafe_tryparse(::Type{Real}, objptr::ObjPtr)
 end
 
 """
-    TclTk.Impl.new_object(x) -> ptr
+    TclTk.Core.new_object(x) -> ptr
 
 Return a pointer to a new Tcl object storing value `x`. The new object has a reference count
 of `0`.
 
 # See also
 
-[`TclObj`](@ref), [`TclTk.Impl.new_list`](@ref), [`TclTk.Impl.Tcl_GetRefCount`](@ref),
-[`TclTk.Impl.Tcl_IncrRefCount`](@ref), and [`TclTk.Impl.Tcl_DecrRefCount`](@ref).
+[`TclObj`](@ref), [`TclTk.Core.new_list`](@ref), [`TclTk.Core.Tcl_GetRefCount`](@ref),
+[`TclTk.Core.Tcl_IncrRefCount`](@ref), and [`TclTk.Core.Tcl_DecrRefCount`](@ref).
 
 """
 new_object
 
 """
-    TclTk.Impl.unsafe_convert(T, objptr) -> val
+    TclTk.Core.unsafe_convert(T, objptr) -> val
 
 Return a value of type `T` from Tcl object pointer `objptr`.
 
@@ -765,7 +765,7 @@ end
 #-------------------------------------------------------------------------- Tcl type names -
 
 """
-    TclTk.Impl.unsafe_object_type(objptr) -> sym::Symbol
+    TclTk.Core.unsafe_object_type(objptr) -> sym::Symbol
 
 Return the symbolic type name of Tcl object pointer `objptr`. The result can be:
 

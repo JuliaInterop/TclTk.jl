@@ -1,8 +1,32 @@
-baremodule TclTk
+module TclTk
 
 export
+    # Tcl types.
+    TclCallback,
+    TclError,
+    TclObj,
+    TclStatus,
+    TclVariable,
+
+    # Version.
+    TCL_MAJOR_VERSION,
+    TCL_MINOR_VERSION,
+    TCL_ALPHA_RELEASE,
+    TCL_BETA_RELEASE,
+    TCL_FINAL_RELEASE,
+
+    # Status constants.
+    TCL_OK,
+    TCL_ERROR,
+    TCL_RETURN,
+    TCL_BREAK,
+    TCL_CONTINUE,
+
+    # Tcl methods.
     tcl_concat,
+    tcl_error,
     tcl_eval,
+    tcl_evalfile,
     tcl_exec,
     tcl_getvar,
     tcl_isassigned,
@@ -17,83 +41,46 @@ export
     unset
 
 using Base
+using CEnum
 using Reexport
 using UnsetIndex
 
-# TclTk is a bare module because it implements its own `eval` function.
-function eval end
-
-# Being a bare module, we must define our `include` function.
-include(file) = Base.include(@__MODULE__, file)
-
+include("CoreDefs.jl")
+include("types.jl")
 include("api.jl")
-
-include("Impl.jl")
-@reexport import .Impl:
-    # Types.
-    TclError,
-    TclObj,
-    TclStatus,
-
-    # Tk images.
-    TkBitmap,
-    TkImage,
-    TkPhoto,
-
-    # Widgets.
-    TkWidget,
-    Button,
-    Canvas,
-    Checkbutton,
-    Combobox,
-    Entry,
-    Frame,
-    Label,
-    Labelframe,
-    Listbox,
-    Menu,
-    Menubutton,
-    Message, # use Ttk.Label
-    Notebook,
-    Panedwindow,
-    Progressbar,
-    Radiobutton,
-    Scale,
-    Scrollbar,
-    Separator,
-    Sizegrip,
-    Spinbox,
-    Text,
-    Toplevel,
-    Treeview,
-    TclVariable,
-
-
-    # Version.
-    TCL_MAJOR_VERSION,
-    TCL_MINOR_VERSION,
-
-    # Status constants.
-    TCL_OK,
-    TCL_ERROR,
-    TCL_RETURN,
-    TCL_BREAK,
-    TCL_CONTINUE,
-
-    # Constants for events.
-    TCL_DONT_WAIT,
-    TCL_WINDOW_EVENTS,
-    TCL_FILE_EVENTS,
-    TCL_TIMER_EVENTS,
-    TCL_IDLE_EVENTS,
-    TCL_ALL_EVENTS,
-
-    # Constants for variables.
-    TCL_GLOBAL_ONLY,
-    TCL_NAMESPACE_ONLY,
-    TCL_APPEND_VALUE,
-    TCL_LIST_ELEMENT,
-    TCL_LEAVE_ERR_MSG
+include("Core.jl")
+#FIXME @reexport import .Core:
+    #FIXME # Tk images.
+    #FIXME TkBitmap,
+    #FIXME TkImage,
+    #FIXME TkPhoto,
+    #FIXME
+    #FIXME # Widgets.
+    #FIXME TkWidget,
+    #FIXME Button,
+    #FIXME Canvas,
+    #FIXME Checkbutton,
+    #FIXME Combobox,
+    #FIXME Entry,
+    #FIXME Frame,
+    #FIXME Label,
+    #FIXME Labelframe,
+    #FIXME Listbox,
+    #FIXME Menu,
+    #FIXME Menubutton,
+    #FIXME Message, # use Ttk.Label
+    #FIXME Notebook,
+    #FIXME Panedwindow,
+    #FIXME Progressbar,
+    #FIXME Radiobutton,
+    #FIXME Scale,
+    #FIXME Scrollbar,
+    #FIXME Separator,
+    #FIXME Sizegrip,
+    #FIXME Spinbox,
+    #FIXME Text,
+    #FIXME Toplevel,
+    #FIXME Treeview,
 
     # Methods.
     #FIXME tk_chooseColor,
@@ -102,39 +89,36 @@ include("Impl.jl")
     #FIXME tk_getSaveFile,
     #FIXME tk_messageBox
 
-# Non-exported public symbols.
-for sym in (
-    #FIXME # Modules.
-    #FIXME :Tk,
-    #FIXME :Ttk,
-    #FIXME
-    #FIXME # Types.
-    #FIXME :Callback,
-    #FIXME :NothingOr,
-    #FIXME :Value,
-    #FIXME :WideInt,
-    #FIXME
-    #FIXME # Methods.
-    #FIXME :bool,
-    #FIXME :cget,
-    #FIXME :configure,
-    #FIXME :deletecommand,
-    #FIXME :grid,
-    #FIXME :pack,
-    #FIXME :place,
-    #FIXME :winfo,
-    )
-
-    # Import symbols from the `Impl` module and declare them as "public".
-    if sym ∉ (:eval,)
-        @eval import .Impl: $sym
-    end
-    if VERSION ≥ v"1.11.0-DEV.469"
-        @eval $(Base.Expr(:public, sym))
-    end
-end
-
-@deprecate list(args...) tcl_list(args...) false
-@deprecate concat(args...) tcl_concat(args...) false
+#FIXME # Non-exported public symbols.
+#FIXME for sym in (
+#FIXME     # Modules.
+#FIXME     :Tk,
+#FIXME     :Ttk,
+#FIXME
+#FIXME     # Types.
+#FIXME     :Callback,
+#FIXME     :NothingOr,
+#FIXME     :Value,
+#FIXME     :WideInt,
+#FIXME
+#FIXME     # Methods.
+#FIXME     :bool,
+#FIXME     :cget,
+#FIXME     :configure,
+#FIXME     :deletecommand,
+#FIXME     :grid,
+#FIXME     :pack,
+#FIXME     :place,
+#FIXME     :winfo,
+#FIXME     )
+#FIXME
+#FIXME     # Import symbols from the `Core` module and declare them as "public".
+#FIXME     if sym ∉ (:eval,)
+#FIXME         @eval import .Core: $sym
+#FIXME     end
+#FIXME     if VERSION ≥ v"1.11.0-DEV.469"
+#FIXME         @eval $(Base.Expr(:public, sym))
+#FIXME     end
+#FIXME end
 
 end # module

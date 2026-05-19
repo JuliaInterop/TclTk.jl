@@ -6,7 +6,7 @@ Module `Ttk` defines Themed Tk widgets.
 module Ttk
 
 using ...TclTk
-using ..Impl: @TkWidget
+using ..Core: @TkWidget
 
 @TkWidget Button       TButton       "::ttk::button"       "btn"
 @TkWidget Checkbutton  TCheckbutton  "::ttk::checkbutton"  "cbt"

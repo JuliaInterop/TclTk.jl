@@ -9,7 +9,7 @@ const GrayRamp = range(colorant"black", colorant"white", length=255)
 new_object(c::Colorant) = new_object("#"*hex(RGB(c)))
 
 """
-    TclTk.Impl.reinterpret_as_fixed_point(x) -> f
+    TclTk.Core.reinterpret_as_fixed_point(x) -> f
 
 Return `x` (a small unsigned integer) reinterpreted as a fixed-point number `f`.
 
@@ -20,10 +20,10 @@ reinterpret_as_fixed_point(x::UInt32) = reinterpret(N0f32, x)
 reinterpret_as_fixed_point(x::UInt64) = reinterpret(N0f64, x)
 
 """
-    TclTk.Impl.reinterpret_as_colorant(r, g, b) -> c::RGB
-    TclTk.Impl.reinterpret_as_colorant((r, g, b)) -> c::RGB
-    TclTk.Impl.reinterpret_as_colorant(r, g, b, a) -> c::RGBA
-    TclTk.Impl.reinterpret_as_colorant((r, g, b, a)) -> c::RGBA
+    TclTk.Core.reinterpret_as_colorant(r, g, b) -> c::RGB
+    TclTk.Core.reinterpret_as_colorant((r, g, b)) -> c::RGB
+    TclTk.Core.reinterpret_as_colorant(r, g, b, a) -> c::RGBA
+    TclTk.Core.reinterpret_as_colorant((r, g, b, a)) -> c::RGBA
 
 Return the triplet `(r, g, b)` of small unsigned integers or the quadruplet `(r, g, b, a)`
 reinterpreted as a `RGB` ro `RGA` colorant. Here `r`, `g`, `b`, and `a` respectively stand

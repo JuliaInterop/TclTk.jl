@@ -195,7 +195,7 @@ function process_calls()
 end
 
 """
-    TclTk.Impl.unsafe_result(T, interp=TclTk.Core.current_interpreter[]) -> val
+    TclTk.Core.unsafe_result(T, interp=TclTk.Core.current_interpreter[]) -> val
 
 Return the result of Tcl interpreter `interp` as a value of type `T`.
 

@@ -171,13 +171,13 @@ end
 const preserved_objects = Dict{Any,Int}()
 
 """
-    TclTk.Impl.preserve(obj) -> obj
+    TclTk.Core.preserve(obj) -> obj
 
 Increment the reference count on object `obj` to prevent that `obj` be garbage collected.
 
 !!! warning
-    Any call to `TclTk.Impl.release(obj)` must match a previous call to
-    [`TclTk.Impl.preserve(obj)`](@ref).
+    Any call to `TclTk.Core.release(obj)` must match a previous call to
+    [`TclTk.Core.preserve(obj)`](@ref).
 
 """
 function preserve(obj)
@@ -186,14 +186,14 @@ function preserve(obj)
 end
 
 """
-    TclTk.Impl.release(obj)
+    TclTk.Core.release(obj)
 
 Decrement the reference count of object `obj`. The resources associated with `obj` may be
 garbage collected if it becomes no longer referenced.
 
 !!! warning
-    Any call to `TclTk.Impl.release(obj)` must match a previous call to
-    [`TclTk.Impl.preserve(obj)`](@ref).
+    Any call to `TclTk.Core.release(obj)` must match a previous call to
+    [`TclTk.Core.preserve(obj)`](@ref).
 
 """
 function release(obj)

@@ -561,18 +561,18 @@ end
     interp = @inferred TclInterp()
 
     # Accessing or deleting a non-existing variable is an error.
-    TclTk.unsetvar!("non_existing_variable"; nocomplain=true)
-    TclTk.unsetvar!("non_existing_array"; nocomplain=true)
-    @test_throws TclError TclTk.getvar("non_existing_variable")
-    @test_throws TclError TclTk.getvar("non_existing_variable"; flags=TCL_GLOBAL_ONLY)
-    @test_throws TclError TclTk.getvar(:non_existing_variable)
-    @test_throws TclError TclTk.getvar(:non_existing_variable; flags=TCL_GLOBAL_ONLY)
-    @test_throws TclError TclTk.getvar(("non_existing_array", 1))
-    @test_throws TclError TclTk.getvar(("non_existing_array", 1); flags=TCL_GLOBAL_ONLY)
-    @test_throws TclError TclTk.getvar(:non_existing_variable)
-    @test_throws TclError TclTk.getvar(:non_existing_variable; flags=TCL_GLOBAL_ONLY)
-    @test_throws TclError TclTk.unsetvar!(:non_existing_variable)
-    @test_throws TclError TclTk.unsetvar!(:non_existing_variable; flags=TCL_GLOBAL_ONLY)
+    tcl_unsetvar("non_existing_variable"; nocomplain=true)
+    tcl_unsetvar("non_existing_array"; nocomplain=true)
+    @test_throws TclError tcl_getvar("non_existing_variable")
+    @test_throws TclError tcl_getvar("non_existing_variable"; flags=TCL_GLOBAL_ONLY)
+    @test_throws TclError tcl_getvar(:non_existing_variable)
+    @test_throws TclError tcl_getvar(:non_existing_variable; flags=TCL_GLOBAL_ONLY)
+    @test_throws TclError tcl_getvar(("non_existing_array", 1))
+    @test_throws TclError tcl_getvar(("non_existing_array", 1); flags=TCL_GLOBAL_ONLY)
+    @test_throws TclError tcl_getvar(:non_existing_variable)
+    @test_throws TclError tcl_getvar(:non_existing_variable; flags=TCL_GLOBAL_ONLY)
+    @test_throws TclError tcl_unsetvar(:non_existing_variable)
+    @test_throws TclError tcl_unsetvar(:non_existing_variable; flags=TCL_GLOBAL_ONLY)
 
     # Manage to make any operation on a variable fail. NOTE Errors in `unset` traces are
     # ignored.
@@ -592,16 +592,16 @@ proc $trace {name1 name2 op} {
     error "attempt to \$op variable \\"\$name\\""
 }
 """)
-    TclTk.setvar!(name, "some_value")
+    tcl_setvar(name, "some_value")
     TclTk.exec(:trace, :add, :variable, name, :read, trace)
-    @test_throws TclError TclTk.getvar(name)
+    @test_throws TclError tcl_getvar(name)
     TclTk.exec(:trace, :add, :variable, name, :write, trace)
-    @test_throws TclError TclTk.setvar!(name, "some_other_value")
-    TclTk.unsetvar!(name) # this also deletes all traces
+    @test_throws TclError tcl_setvar(name, "some_other_value")
+    tcl_unsetvar(name) # this also deletes all traces
 
-    @test_deprecated TclTk.setvar("some_name", "some_value")
+    @test_deprecated tcl_setvar("some_name", "some_value")
     @test interp["some_name"] == "some_value"
-    @test_deprecated TclTk.unsetvar("some_name")
+    @test_deprecated tcl_unsetvar("some_name")
     @test !haskey(interp, "some_name")
 
     for (name, value) in (("a", 42),
@@ -629,17 +629,17 @@ proc $trace {name1 name2 op} {
 
         # Set variable.
         if name isa Tuple
-            @test_deprecated TclTk.setvar!(name..., value)
-            @test_deprecated TclTk.unsetvar!(name...)
+            @test_deprecated tcl_setvar(name..., value)
+            @test_deprecated tcl_unsetvar(name...)
         end
-        @test nothing === @inferred TclTk.setvar!(name, value)
-        obj = @inferred TclTk.setvar!(TclObj, name, value)
+        @test nothing === @inferred tcl_setvar(name, value)
+        obj = @inferred tcl_setvar(TclObj, name, value)
         @test obj isa TclObj
         @test obj == TclObj(value)
 
         # Get variable.
         T = typeof(value)
-        obj = @inferred TclTk.getvar(name)
+        obj = @inferred tcl_getvar(name)
         @test obj isa TclObj
         @test obj == @inferred interp[name]
         @test obj == @inferred interp[key]
@@ -648,19 +648,19 @@ proc $trace {name1 name2 op} {
             x = @inferred interp["$(part1)($(part2))"]
             @test x isa TclObj
             @test obj == x
-            y = @test_deprecated TclTk.getvar(part1, part2)
+            y = @test_deprecated tcl_getvar(part1, part2)
             @test y isa TclObj
             @test obj == y
         end
         if value isa Union{String,Integer}
-            x = @inferred TclTk.getvar(T, name)
+            x = @inferred tcl_getvar(T, name)
             @test x isa T
             @test value == x
             y = @inferred interp[T, name]
             @test y isa T
             @test value == y
         elseif value isa AbstractFloat
-            x = @inferred TclTk.getvar(T, name)
+            x = @inferred tcl_getvar(T, name)
             @test x isa T
             @test value ≈ x
             y = @inferred interp[T, name]
@@ -670,11 +670,11 @@ proc $trace {name1 name2 op} {
         end
 
         # Test existence and delete variable.
-        @test TclTk.exists(name)
+        @test tcl_isassigned(name)
         @test haskey(interp, name)
         @test haskey(interp, key)
-        TclTk.unsetvar!(name)
-        @test !TclTk.exists(name)
+        tcl_unsetvar(name)
+        @test !tcl_isassigned(name)
         @test !haskey(interp, name)
         @test !haskey(interp, key)
 
@@ -690,10 +690,10 @@ proc $trace {name1 name2 op} {
         interp[name] = unset
         @test !haskey(interp, name)
 
-        # Delete with `setvar!` and `unset`.
+        # Delete with `tcl_setvar` and `unset`.
         interp[name] = value
         @test haskey(interp, name)
-        @test nothing === @inferred TclTk.setvar!(interp, name, unset)
+        @test nothing === @inferred tcl_setvar(interp, name, unset)
         @test !haskey(interp, name)
 
         # Use a Tcl object as the variable name.
@@ -705,15 +705,15 @@ proc $trace {name1 name2 op} {
             obj = @inferred interp[key]
             @test obj isa TclObj
             @test obj == val
-            obj = @inferred TclTk.getvar(interp, key)
+            obj = @inferred tcl_getvar(interp, key)
             @test obj isa TclObj
             @test obj == val
             interp[key] = unset
             @test !haskey(interp, key)
-            @test nothing === @inferred TclTk.setvar!(interp, key, val)
+            @test nothing === @inferred tcl_setvar(interp, key, val)
             @test haskey(interp, key)
             @test val == @inferred interp[key]
-            @test nothing === @inferred TclTk.setvar!(interp, key, unset)
+            @test nothing === @inferred tcl_setvar(interp, key, unset)
             @test !haskey(interp, key)
         end
     end
@@ -906,29 +906,28 @@ end
 
 @testset "Linked variables" begin
     name = "::GLOBAL_COUNTER"
-    A = @inferred TclTk.Variable{Int}(name)
+    A = @inferred TclVariable{Int}(name)
     @test eltype(A) === Int
     @test A.name == name
-    @test A.interp === TclInterp()
-    A.interp.eval("unset -nocomplain $(A.name)")
-    @test TclTk.exists(A) == false
+    @inferred tcl_eval("unset -nocomplain $(A.name)")
+    @test tcl_isassigned(A) == false
     @test isassigned(A) == false
     s = sprint(show, MIME"text/plain"(), A)
-    @test startswith(s, "TclTk.Variable{")
+    @test startswith(s, "TclVariable{")
     @test endswith(s, ", value: #undef)")
     A[] = 0
     @test @inferred(A[]) === 0
-    @test TclTk.exists(A) == true
+    @test tcl_isassigned(A) == true
     @test isassigned(A) == true
     s = sprint(show, MIME"text/plain"(), A)
-    @test startswith(s, "TclTk.Variable{")
+    @test startswith(s, "TclVariable{")
     @test endswith(s, ", value: 0)")
     A[] += 3
     @test @inferred(A[]) === 3
-    @test TclTk.getvar(eltype(A), A.interp, A.name) == 3
-    A.interp.eval("incr $(A.name) -2")
+    @test tcl_getvar(eltype(A), A.interp, A.name) == 3
+    @inferred tcl_eval("incr $(A.name) -2")
     @test @inferred(A[]) === 1
-    B = @inferred TclTk.Variable(A.name, A.interp) # same variable but no given type
+    B = @inferred TclVariable(A.name, A.interp) # same variable but no given type
     @test @inferred(B[]) isa TclObj
     @test @inferred(convert(eltype(A), B[])) === A[]
     @test @inferred(B[eltype(A)]) === A[]
@@ -937,19 +936,6 @@ end
     @test @inferred(A[]) === x + 7
     @test @inferred(B[eltype(A)]) === x + 7
 
-    # Another variable: same name and type but in another interpreter.
-    let private = @inferred TclInterp(:private)
-        C = @inferred TclTk.Variable{eltype(A)}(private, A.name)
-        A[] = 1
-        @test isassigned(C) == false
-        C[] = -1
-        @test A[] === +1
-        @test C[] === -1
-        @test isassigned(C) == true
-        @test @inferred(private(eltype(C), :set, C.name)) === -1
-    end
-    GC.gc() # to finalize private interpreter
-
     # Test various ways to unset a variable.
     delete!(A)
     @test !isassigned(A)
@@ -957,9 +943,9 @@ end
     @test !isassigned(A)
     A[] = 0
     @test isassigned(A)
-    TclTk.unsetvar!(A)
+    tcl_unsetvar(A)
     @test !isassigned(A)
-    @test_throws Exception TclTk.unsetvar!(A) # unset more than once is not allowed
+    @test_throws Exception tcl_unsetvar(A) # unset more than once is not allowed
     A[] = 0
     @test isassigned(A)
     A[] = unset

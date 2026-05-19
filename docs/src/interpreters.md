@@ -135,22 +135,21 @@ Above `unset` is the singleton provided by the
 package
 
 Under the hood, accessing and mutating the value of a global variable is done by the methods
-[`TclTk.getvar(T=TclObj, interp=TclInterp(), name)`](@ref TclTk.getvar) and
-[`TclTk.setvar!(Nothing, interp=TclInterp(), name, value)`](@ref TclTk.setvar!), checking
-for the existence of a global variable is done by the method
-[`TclTk.exists(interp=TclInterp(), name)`](@ref TclTk.exists), and deleting a global
-variable is done by the method [`TclTk.unsetvar!(interp=TclInterp(), name)`](@ref
-TclTk.unsetvar!). All these methods apply to the shared interpreter of the thread if no
-interpreter is specified.
+[`tcl_getvar(T=TclObj, interp=TclInterp(), name)`](@ref tcl_getvar) and
+[`tcl_setvar(Nothing, interp=TclInterp(), name, value)`](@ref tcl_setvar), checking for the
+existence of a global variable is done by the method [`TclTk.exists(interp=TclInterp(),
+name)`](@ref TclTk.exists), and deleting a global variable is done by the method
+[`tcl_unsetvar(interp=TclInterp(), name)`](@ref tcl_unsetvar). All these methods apply to
+the shared interpreter of the thread if no interpreter is specified.
 
 ## Linked variables
 
-The [`TclTk.Variable`](@ref) constructor yields an object tightly linked to a global Tcl
+The [`TclVariable`](@ref) constructor yields an object tightly linked to a global Tcl
 variable. For example:
 
 ```julia-repl
-julia> A = TclTk.Variable{Float64}("THRESHOLD")
-TclTk.Variable{Float64}(name: "THRESHOLD", value: #undef)
+julia> A = TclVariable{Float64}("THRESHOLD")
+TclVariable{Float64}(name: "THRESHOLD", value: #undef)
 
 julia> eltype(A)
 Float64
@@ -171,7 +170,7 @@ julia> isassigned(A) # now does it have a value?
 true
 
 julia> A
-TclTk.Variable{Float64}(name: "THRESHOLD", value: 3.125)
+TclVariable{Float64}(name: "THRESHOLD", value: 3.125)
 
 julia> TclTk.eval(Nothing, "set $(A.name) 12.5") # call Tcl to change the variable value
 

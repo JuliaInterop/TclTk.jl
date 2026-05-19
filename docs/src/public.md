@@ -27,11 +27,11 @@ tcl_error
 ## Variables
 
 ```@docs
-TclTk.Variable
-TclTk.exists
-TclTk.getvar
-TclTk.setvar!
-TclTk.unsetvar!
+TclVariable
+tcl_getvar
+tcl_isassigned
+tcl_setvar
+tcl_unsetvar
 ```
 
 ## Callbacks

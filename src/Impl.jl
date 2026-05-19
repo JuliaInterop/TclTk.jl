@@ -12,12 +12,12 @@ import ..TclTk:
     tcl_eval,
     tcl_exec,
     tcl_getvar,
+    tcl_isassigned,
     tcl_library,
     tcl_list,
     tcl_quote_string,
     tcl_setvar,
     tcl_unsetvar,
-    tcl_exists,
     tcl_version
 
 using Tcl_jll, Tk_jll
@@ -43,7 +43,7 @@ include("utils.jl")
 include("objects.jl")
 include("lists.jl")
 include("interp.jl")
-#include("variables.jl")
+include("variables.jl")
 #include("callbacks.jl")
 #include("events.jl")
 #include("colors.jl")
@@ -51,27 +51,6 @@ include("interp.jl")
 #include("dialogs.jl")
 #include("images.jl")
 #include("wm.jl")
-
-#FIXME @deprecate getinterp(args...; kwds...) TclInterp(args...; kwds...) false
-
-@deprecate setvar(args...; kwds...) setvar!(args...; kwds...) false
-@deprecate unsetvar(args...; kwds...) unsetvar!(args...; kwds...) false
-
-@deprecate exists(part1::Name, part2::Name) exists((part1, part2)) false
-@deprecate exists(interp::TclInterp, part1::Name, part2::Name) exists(interp, (part1, part2)) false
-
-@deprecate getvar(part1::Name, part2::Name; kwds...) getvar((part1, part2); kwds...) false
-@deprecate getvar(T::Type, part1::Name, part2::Name; kwds...) getvar(T, (part1, part2); kwds...) false
-@deprecate getvar(interp::TclInterp, part1::Name, part2::Name; kwds...) getvar(interp, (part1, part2); kwds...) false
-@deprecate getvar(T::Type, interp::TclInterp, part1::Name, part2::Name; kwds...) getvar(T, interp, (part1, part2); kwds...) false
-
-@deprecate setvar!(part1::Name, part2::Name, value; kwds...) setvar!((part1, part2), value; kwds...) false
-@deprecate setvar!(T::Type, part1::Name, part2::Name, value; kwds...) setvar!(T, (part1, part2), value; kwds...) false
-@deprecate setvar!(interp::TclInterp, part1::Name, part2::Name, value; kwds...) setvar!(interp, (part1, part2), value; kwds...) false
-@deprecate setvar!(T::Type, interp::TclInterp, part1::Name, part2::Name, value; kwds...) setvar!(T, interp, (part1, part2), value; kwds...) false
-
-@deprecate unsetvar!(part1::Name, part2::Name; kwds...) unsetvar!((part1, part2); kwds...) false
-@deprecate unsetvar!(interp::TclInterp, part1::Name, part2::Name; kwds...) setvar!(interp, (part1, part2); kwds...) false
 
 function __init__()
     # Check that package was built with the same version as the dynamic library.

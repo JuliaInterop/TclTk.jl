@@ -39,8 +39,7 @@ The Tcl library directory contains a library of Tcl scripts, such as those used 
 auto-loading. It is also given by the global variable `"tcl_library"` which can be retrieved
 by:
 
-    interp[:tcl_library] -> dir
-    TclTk.getvar(String, interp = TclInterp(), :tcl_library) -> dir
+    tcl_getvar(String, "tcl_library") -> dir
 
 """
 function tcl_library(; relative::Bool=false)

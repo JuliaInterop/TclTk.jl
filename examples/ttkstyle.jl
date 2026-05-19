@@ -46,7 +46,7 @@ function setState(interp::TclInterp, rootWidget, exceptThese, value)
     end
 end
 setState_ = TclTk.Callback(setState, interp, "setState")
-enabled = TclTk.Variable{Bool}("enabled")
+enabled = TclVariable{Bool}("enabled")
 enabled[] = true
 
 ## Set up the checkbutton group

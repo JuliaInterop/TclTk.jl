@@ -29,7 +29,12 @@ Versioning](https://semver.org).
 - `w.rgb(color)` with `w` a widget now return an `RGB{N0f16}` value instead of a triplet of
   `UInt16`.
 
-- `TclTk.list` is now `tcl_list`, `TclTk.concat` is now `tcl_concat`.
+- Many public symbols are now prefixed and exported: `TclTk.list` becomes `tcl_list`,
+  `TclTk.concat` becomes `tcl_concat`, `TclTk.quote_string` becomes `tcl_quote_string`,
+  `TclTk.eval` becomes `tcl_eval`, `TclTk.exec` becomes `tcl_exec`, `TclTk.setvar` becomes
+  `tcl_setvar`, `TclTk.getvar` becomes `tcl_getvar`, `TclTk.unsetvar` becomes
+  `tcl_unsetvar`, `TclTk.exists` becomes `tcl_isassigned`, and `TclTk.Variable` becomes
+  `TclVariable`.
 
 - `list[i => T]`, `list[T, i]`, and `list[i, T]` to retrieve the `i`-th item of the Tcl `list`
   converted to type `T` is now done by `fetch(T, list, i)`.

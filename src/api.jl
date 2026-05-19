@@ -1,14 +1,14 @@
+function tcl_concat end
 function tcl_eval end
 function tcl_exec end
-function tcl_list end
-function tcl_concat end
 function tcl_getvar end
+function tcl_isassigned end
+function tcl_library end
+function tcl_list end
+function tcl_quote_string end
 function tcl_setvar end
 function tcl_unsetvar end
-function tcl_exists end
-function tcl_quote_string end
 function tcl_version end
-function tcl_library end
 
 export wm
 

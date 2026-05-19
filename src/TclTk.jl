@@ -1,6 +1,18 @@
 baremodule TclTk
 
 export
+    tcl_concat,
+    tcl_eval,
+    tcl_exec,
+    tcl_getvar,
+    tcl_isassigned,
+    tcl_library,
+    tcl_list,
+    tcl_quote_string,
+    tcl_setvar,
+    tcl_unsetvar,
+    tcl_version,
+
     # Re-export from UnsetIndex.
     unset
 
@@ -20,7 +32,6 @@ include("Impl.jl")
 @reexport import .Impl:
     # Types.
     TclError,
-    TclInterp,
     TclObj,
     TclStatus,
 
@@ -55,6 +66,8 @@ include("Impl.jl")
     Text,
     Toplevel,
     Treeview,
+    TclVariable,
+
 
     # Version.
     TCL_MAJOR_VERSION,
@@ -80,62 +93,36 @@ include("Impl.jl")
     TCL_NAMESPACE_ONLY,
     TCL_APPEND_VALUE,
     TCL_LIST_ELEMENT,
-    TCL_LEAVE_ERR_MSG,
+    TCL_LEAVE_ERR_MSG
 
     # Methods.
-    tcl_concat,
-    tcl_error,
-    tcl_library,
-    tcl_version,
-    tk_chooseColor,
-    tk_chooseDirectory,
-    tk_getOpenFile,
-    tk_getSaveFile,
-    tk_messageBox,
-    tk_start
-    tcl_list,
+    #FIXME tk_chooseColor,
+    #FIXME tk_chooseDirectory,
+    #FIXME tk_getOpenFile,
+    #FIXME tk_getSaveFile,
+    #FIXME tk_messageBox
 
 # Non-exported public symbols.
 for sym in (
-    # Modules.
-    :Tk,
-    :Ttk,
-
-    # Types.
-    :Callback,
-    :NothingOr,
-    :Value,
-    :Variable,
-    :WideInt,
-
-    # Methods.
-    :bool,
-    :cget,
-    :configure,
-    :deletecommand,
-    :do_events,
-    :do_one_event,
-    :eval,
-    :exec,
-    :exists,
-    :getresult,
-    :getvar,
-    :grid,
-    :isactive,
-    :isdeleted,
-    :isrunning,
-    :issafe,
-    :pack,
-    :place,
-    :quote_string,
-    :resume,
-    :setresult!,
-    :setvar!,
-    :setvar, # FIXME deprecated
-    :suspend,
-    :unsetvar!,
-    :unsetvar, # FIXME deprecated
-    :winfo,
+    #FIXME # Modules.
+    #FIXME :Tk,
+    #FIXME :Ttk,
+    #FIXME
+    #FIXME # Types.
+    #FIXME :Callback,
+    #FIXME :NothingOr,
+    #FIXME :Value,
+    #FIXME :WideInt,
+    #FIXME
+    #FIXME # Methods.
+    #FIXME :bool,
+    #FIXME :cget,
+    #FIXME :configure,
+    #FIXME :deletecommand,
+    #FIXME :grid,
+    #FIXME :pack,
+    #FIXME :place,
+    #FIXME :winfo,
     )
 
     # Import symbols from the `Impl` module and declare them as "public".

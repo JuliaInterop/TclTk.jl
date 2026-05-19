@@ -69,7 +69,7 @@ mutable struct Callback{F<:Function}
     func::F
 end
 
-struct Variable{T}
+struct TclVariable{T}
     name::TclObj
 end
 

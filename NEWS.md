@@ -14,7 +14,10 @@ Versioning](https://semver.org).
   explicitly specified. When Tcl code is to be evaluated, the calling thread communicates
   with the sticky task which manages the interpreter to have the code evaluated. A similar
   solution is implemented by [Julia Tk package](http://github.com/JuliaGraphics/Tk.jl). See
-  [this link](https://github.com/JuliaInterop/TclTk.jl/issues/9) for a discussion.
+  [this link](https://github.com/JuliaInterop/TclTk.jl/issues/9) for a discussion. As a
+  result, `TclTk.getresult`, `TclTk.setresult!`, `TclTk.isrunning`, `TclTk.resume`,
+  `TclTk.suspend`, `TclTk.do_events`, `TclTk.do_events`, and `tk_start` are no longer needed
+  and have been removed.
 
 - Widget types are no longer prefixed by `Tk` of `Ttk`. For example, use `Canvas` instead of
   `TkCanvas`. When a type of widget exists in the two packages, the themed one is preferred

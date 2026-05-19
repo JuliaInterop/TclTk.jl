@@ -17,6 +17,7 @@ needed to uniquely identify Julia widget type given its Tk class. For now, `comm
 macro TkWidget(structname, class, command, prefix)
 
     type = esc(structname) # constructor must be in the caller's module
+    constructor = esc(Symbol("_", structname))
     class isa Union{Symbol,String} || error("`class` must be a symbol or a string literal")
     class = QuoteNode(Symbol(class)::Symbol)
     command isa String || error("`command` must be a string literal")
@@ -26,31 +27,29 @@ macro TkWidget(structname, class, command, prefix)
         # Define structure an inner constructor.
         struct $type <: TkWidget
             path::TclObj # Tk window path and Tcl widget command
-            $type(path::Verified{<:Name}) = new(path.value)
+            global $constructor
+            $constructor(path::Name) = new(path)
         end
 
         # Build instance.
-        $type(args...; kwds...) = build($type, $class, $command, $prefix, args...; kwds...)
+        $type(args...; kwds...) =
+            build($constructor, $class, $command, $prefix, args...; kwds...) :: $type
 
-        # Make the widget callable. FIXME make this at the TkWidget level
+        # Make the widget callable.
         (w::$type)(args...; kwds...) = tcl_exec(w, args...; kwds...)
 
         # Register widget class.
-        register_widget_class($class, $type)
+        register_widget_class($class, $constructor)
     end
 end
 
-const widget_classes = Dict{Symbol,Type{<:TkWidget}}()
+const widget_classes = Dict{Symbol,Function}()
 
-function register_widget_class(class::Union{Symbol,AbstractString}, ::Type{T}) where {T<:TkWidget}
+function register_widget_class(class::Union{Symbol,AbstractString}, constructor::Function)
     class isa Symbol || (class = Symbol(class)::Symbol)
-    if haskey(widget_classes, class)
-        S = widget_classes[class]
-        isequal(S, T) || error("attempt to register widget class `$class` for type `$T` ",
-                               "while already registered for type `$S`")
-    else
-        widget_classes[class] = T
-    end
+    haskey(widget_classes, class) && error(
+        "attempt to register widget class `$class` more than once")
+    widget_classes[class] = constructor
     return nothing
 end
 
@@ -238,8 +237,8 @@ function TkWidget(path::Name)
     (path isa Union{AbstractString,TclObj}) || (path = String(path)::String)
     winfo_exists(path) || argument_error(
         "\"$path\" is not the path of an existing Tk widget")
-    T = widget_constructor_from_path(path)
-    return T(Verified(path))
+    _T = widget_constructor_from_path(path)
+    return _T(path)
 end
 
 """
@@ -459,48 +458,47 @@ isrootwidget(w::Toplevel) = isrootwidget(w.path)
 isrootwidget(w::TkWidget) = false
 
 # Build a top-level widget with automatic name.
-function build(::Type{T}, class::Symbol, command::String, prefix::String,
-               pairs::Pair...; kwds...) where {T<:TkWidget}
+function build(_T::Function, class::Symbol, command::String, prefix::String,
+               pairs::Pair...; kwds...)
     startswith(prefix, '.') || argument_error("missing parent widget")
-    path = tcl_exec(TclObj, command, widget_auto_path("", prefix), pairs...; kwds...)
-    return T(Verified(path))
+    path = widget_auto_path("", prefix)
+    return _T(tcl_exec(TclObj, command, path, pairs...; kwds...))
 end
 
 # Build a widget given its full path.
-function build(::Type{T}, class::Symbol, command::String, prefix::String,
-               path::Name, pairs::Pair...; kwds...) where {T<:TkWidget}
+function build(_T::Function, class::Symbol, command::String, prefix::String,
+               path::Name, pairs::Pair...; kwds...)
     if winfo_exists(path)
         # Re-use existing widget.
         trueclass = winfo_class(path)
         class == trueclass || argument_error(
             "attempt to wrap a widget with class `", class, "` on top of existing widget \"",
             path, "\" whose class is `", trueclass, "`")
-        w = T(Verified(path))
+        w = _T(path)
         (isempty(pairs) && isempty(kwds)) || w.configure(pairs...; kwds...)
         return w
     else
         # Create a new widget.
-        path = tcl_exec(TclObj, command, path, pairs...; kwds...)
-        return T(Verified(path))
+        return _T(tcl_exec(TclObj, command, path, pairs...; kwds...))
     end
 end
 
 # Build a child widget given its parent and its name.
-function build(::Type{T}, class::Symbol, command::String, prefix::String,
-               parent::TkWidget, name::Name, pairs::Pair...; kwds...) where {T<:TkWidget}
+function build(_T::Function, class::Symbol, command::String, prefix::String,
+               parent::TkWidget, name::Name, pairs::Pair...; kwds...)
     name isa String || (name = String(name)::String)
     isempty(match(r"^[A-Z_a-z][0-9A-Z_a-z]*$", name)) && argument_error(
         "invalid widget child name \"$name\"")
     root = String(parent.path)::String
     path = (root == "." ? root*name : root*"."*name)::String
-    return build(T, class, command, prefix, path, pairs...; kwds...)
+    return build(_T, class, command, prefix, path, pairs...; kwds...)
 end
 
 # Build a child widget given its parent and with automatic name.
-function build(::Type{T}, class::Symbol, command::String, prefix::String,
-               parent::TkWidget, pairs::Pair...; kwds...) where {T<:TkWidget}
+function build(_T::Function, class::Symbol, command::String, prefix::String,
+               parent::TkWidget, pairs::Pair...; kwds...)
     path = widget_auto_path(String(parent.path)::String, prefix)
-    return build(T, class, command, prefix, path, pairs...; kwds...)
+    return _T(tcl_exec(TclObj, command, path, pairs...; kwds...))
 end
 
 # Return the path of a non-existing widget.

@@ -51,7 +51,7 @@ function TkImage{type}(pairs::Pair...; kwds...) where {type}
     # Create a new image of a given type and automatically named.
     type isa Symbol || argument_error("image type must be a symbol")
     name = tcl_exec(TclObj, :image, :create, type, pairs...; kwds...)
-    return TkImage{type}(Verified(name))
+    return _TkImage(Val(type), name)
 end
 
 function TkImage{type}(name::Name, pairs::Pair...; kwds...) where {type}
@@ -59,7 +59,7 @@ function TkImage{type}(name::Name, pairs::Pair...; kwds...) where {type}
     # exists, it is re-wrapped.
     type isa Symbol || argument_error("image type must be a symbol")
     name = tcl_exec(TclObj, "::_jl::config_or_create_image", type, name, pairs...; kwds...)
-    return TkImage{type}(Verified(name))
+    return _TkImage(Val(type), name)
 end
 
 """
@@ -74,7 +74,7 @@ TkImage(name::Name, pairs::Pair...; kwds...) = TkImage(TclObj(name), pairs...; k
 function TkImage(name::TclObj, pairs::Pair...; kwds...)
     type = tcl_exec(Symbol, :image, :type, name)
     (isempty(pairs) && isempty(kwds)) || interp(name, :configure, pairs...; kwds...)
-    return TkImage{type}(Verified(name))
+    return _TkImage(Val(type), name)
 end
 
 """

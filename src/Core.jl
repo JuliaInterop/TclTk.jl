@@ -9,8 +9,8 @@ using ..TclTk
 
 using ..TclTk:
     _TclObj,
+    _TkImage,
     TkObject,
-    Verified,
     WrappedObject
 
 # Import public symbols that are implemented or extended in this module.

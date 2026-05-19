@@ -59,11 +59,6 @@ their associated Tcl object.
 """
 abstract type WrappedObject end
 
-# Simple decorator to indicate a verified argument.
-struct Verified{T}
-    value::T
-end
-
 # Structure to store a pointer to a Tcl object. (Even though the address should not be
 # modified, it is mutable because immutable objects cannot be finalized.) The constructor
 # will refuse to build a managed Tcl object with a NULL address.
@@ -102,9 +97,10 @@ abstract type TkWidget <: TkObject      end
 # An image is parameterized by the symbolic image type.
 struct TkImage{T} <: TkObject
     name::TclObj
-    function TkImage{T}(name::Verified{TclObj}) where {T}
+    global _TkImage
+    function _TkImage(::Val{T}, name::TclObj) where {T}
         T isa Symbol || argument_error("image type must be a symbol")
-        return new{T}(name.value)
+        return new{T}(name)
     end
 end
 

@@ -7,18 +7,17 @@
 A top-level or a menu widget are created by:
 
 ```julia
-top = Toplevel(interp=TclInterp(), [path,] pairs...; kwds...)
-menu = Menu(interp=TclInterp(), [path,] pairs...; kwds...)
+top = Toplevel([path,] pairs...; kwds...)
+menu = Menu([path,] pairs...; kwds...)
 ```
 
-where `interp` is the interpreter where to create the widget (the shared interpreter of the
-thread by default), `path` is a string like `".top"` or `".menu"` (it must start with a dot
-and have no other dots). Arguments `pairs...` and keywords `kwds...` denotes any number of
-settings specified as `option => value` pair or `option=value` keyword with `option` an
-option name and `value` the option value (for pairs, `option` may be a string or a symbol
-and the leading hyphen can be omitted). The `path` argument is optional; if omitted, a
-widget path is automatically generated in the form `".$(pfx)$(num)"` where `pfx` is a short
-prefix specific to the widget class and `num` is a unique number.
+where `path` is a string like `".top"` or `".menu"` (it must start with a dot and have no
+other dots). Arguments `pairs...` and keywords `kwds...` denotes any number of settings
+specified as `option => value` pair or `option=value` keyword with `option` an option name
+and `value` the option value (for pairs, `option` may be a string or a symbol and the
+leading hyphen can be omitted). The `path` argument is optional; if omitted, a widget path
+is automatically generated in the form `".$(pfx)$(num)"` where `pfx` is a short prefix
+specific to the widget class and `num` is a unique number.
 
 The widget path (given by `w.path` for a widget `w`) is also the name of the Tcl command
 implementing the widget behavior and is used for any reference to the widget.
@@ -60,14 +59,14 @@ relative path, `child`, is optional and is automatically generated if omitted.
 
 The path of the widget is the concatenation of its parent path and the widget relative path
 with a dot separator. The widget path is given by the property `w.path` for a widget `w`.
-The widget path is unique for a given interpreter, if a widget constructor is called with a
-path of an existing widget, a Julia object wrapping the same Tk widget is returned. However,
-the constructor must correspond to the class of the existing widget. To relax this, a widget
-instance can be built for an existing widget by calling the abstract constructor `TkWidget`:
+The widget path is unique, if a widget constructor is called with a path of an existing
+widget, a Julia object wrapping the same Tk widget is returned. However, the constructor
+must correspond to the class of the existing widget. To relax this, a widget instance can be
+built for an existing widget by calling the abstract constructor `TkWidget`:
 
 ```julia
-w = TkWidget(interp=TclInterp(), path)
-w = TkWidget(interp=TclInterp(), parent, child)
+w = TkWidget(path)
+w = TkWidget(parent, child)
 ```
 
 The latter case is equivalent to have `path = "$(parent).$(child)"` in the former case.
@@ -79,7 +78,7 @@ Tk widgets may be invoked to execute sub-commands (the list of which depend on t
 type). There are different two equivalent ways to call a widget sub-command:
 
 ```julia
-TclTk.exec(T=Nothing, widget, subcmd, args...)
+tcl_exec(T=Nothing, widget, subcmd, args...)
 widget(T=Nothing, subcmd, args...)
 ```
 
@@ -89,20 +88,15 @@ or a Tcl object) and `args...` are the arguments of the sub-command. For example
 `btn` is a button widget, retrieving the associated text can be done by one of:
 
 ```julia
-TclTk.exec(String, btn, :cget, "-text")
+tcl_exec(String, btn, :cget, "-text")
 btn(String, :cget, "-text")
 ```
 
-!!! warning
-    Another possibility could be to evaluate a Tcl script as in:
+Another possibility could be to evaluate a Tcl script as in:
 
-    ```julia
-    TclTk.eval(String, "$btn cget -text")
-    ```
-
-    However, this is not recommended as `TclTk.eval` in this example will use the shared
-    interpreter of the thread whereas the interpreter which may not be the one where
-    lives the widget. This is avoided by the other ways to execute a sub-command.
+```julia
+tcl_eval(String, "$btn cget -text")
+```
 
 
 ## Geometry managers
@@ -111,14 +105,14 @@ Non-top level widgets must be managed by a *geometry manager* to become visible.
 3 different geometry managers to organize widgets within a so-called *container* widget
 (their parent by default):
 
-* The *placer* geometry manager, via the [`TclTk.place`](@ref) function, provides simple
-  fixed placement of widgets inside their container.
+* The *placer* geometry manager, via the [`tk_place`](@ref) function, provides simple fixed
+  placement of widgets inside their container.
 
-* The *packer* geometry manager, via the [`TclTk.pack`](@ref) function, packs the widgets
-  in order against the edges of their container.
+* The *packer* geometry manager, via the [`tk_pack`](@ref) function, packs the widgets in
+  order against the edges of their container.
 
-* The *grid* geometry manager, via the [`TclTk.grid`](@ref) function, arranges widgets in
-  rows and columns inside their container.
+* The *grid* geometry manager, via the [`tk_grid`](@ref) function, arranges widgets in rows
+  and columns inside their container.
 
 These geometry managers take a variable number of arguments, one of which must be a widget
 and all widget arguments must live in the same interpreter.
@@ -127,12 +121,11 @@ For example packing a label and a button one above the other in a top-level wind
 done by:
 
 ```julia
-interp = tk_start()
-top = Toplevel(interp, background="darkseagreen")
+top = Toplevel(background="darkseagreen")
 lab = Label(top, text="Some label", background="lightblue")
 btn = Button(top, text="Click me", command="puts {Hello world!}")
 btn.pack(btn, lab, side=:bottom, padx=90, pady=5)
-wm.title(top, "Tk `pack` example")
+top.title("Tk `pack` example")
 ```
 
 which gives:
@@ -148,12 +141,11 @@ button `btn` widgets as follows:
 
 ```julia
 using TclTk
-tk_start()
 top = Toplevel()
-wm.title(top, "Tk example")
+top.title("Tk example")
 lab = Label(top, text="Some label", background="lightblue")
 btn = Button(top, text="Please push me...", command="puts {Button pushed!}")
-btn.pack(btn, side=:top, padx=70, pady=5)
+tk_pack(lab, btn, side=:top, padx=70, pady=5)
 ```
 
 This shows how `option => value` pairs can be used at widget creation to set some
@@ -165,13 +157,13 @@ Configuration options of `btn` can be queried by the `cget` sub-command as in th
 examples:
 
 ```julia-repl
-julia> TclTk.exec(btn, :cget, "-text") # each argument is a token
+julia> tcl_exec(btn, :cget, "-text") # each argument is a token
 TclObj("Please push me...")
 
 julia> btn(:cget, "-text") # shortcut for the above example
 TclObj("Please push me...")
 
-julia> TclTk.cget(btn, :text) # option name without hyphen
+julia> tk_cget(btn, :text) # option name without hyphen
 TclObj("Please push me...")
 
 julia> btn[:text] # option name without hyphen
@@ -185,13 +177,13 @@ the `-text` option. Which syntax is preferred is a matter of taste.
 An optional Julia type may be specified to convert the value of the Tcl object:
 
 ```julia-repl
-julia> TclTk.exec(String, btn, :cget, "-text") # each argument is a token
+julia> tcl_exec(String, btn, :cget, "-text") # each argument is a token
 "Please push me..."
 
 julia> btn(String, :cget, "-text") # shortcut for the above example
 "Please push me..."
 
-julia> TclTk.cget(String, btn, :text) # option name without hyphen
+julia> tk_cget(String, btn, :text) # option name without hyphen
 "Please push me..."
 
 julia> btn[String, :text]
@@ -220,7 +212,7 @@ For an existing widget, re-configuration can be done by via the `configure` sub-
 (often abbreviated to `config`) of the widget:
 
 ```julia-repl
-julia> TclTk.exec(btn, :config, text = "changed text")
+julia> tcl_exec(btn, :config, text = "changed text")
 
 ```
 

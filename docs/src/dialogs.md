@@ -19,8 +19,6 @@ elseif answer == "no"
 end
 ```
 
-[`tk_start`](@ref) is automatically called by the dialog widgets.
-
 ## Choosing a color
 
 Interactively choosing a color can be done by (`using ColorTypes` is to import `RGB` among
@@ -39,7 +37,7 @@ If the user cancel the operation of close the dialog window, `nothing` is return
 otherwise, the returned color can be used to configure a `Tk` widget. For example:
 
 ```julia
-top = Toplevel(interp, :background => color)
+top = Toplevel(:background => color)
 ```
 
 

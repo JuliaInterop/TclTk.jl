@@ -152,7 +152,7 @@ Throw a Tcl error with a message stored in the result of `interp`.
     call.
 
 """
-@noinline unsafe_error(interp::InterpPtr) = tcl_error(unsafe_result(String, interp))
+@noinline unsafe_error(interp::InterpPtr) = tcl_error(unsafe_get_result(String, interp))
 
 """
     TclTk.Core.unsafe_error(interp, mesg)
@@ -166,7 +166,7 @@ non-null Tcl interpreter with a non-empty result; otherwise, the error message i
 
 # See also
 
-[`TclTk.Core.unsafe_convert`](@ref) and [`TclTk.Core.unsafe_result`](@ref).
+[`TclTk.Core.unsafe_convert`](@ref) and [`TclTk.Core.unsafe_get_result`](@ref).
 
 """
 @noinline unsafe_error(interp::InterpPtr, mesg::AbstractString) =

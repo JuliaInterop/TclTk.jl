@@ -18,25 +18,25 @@ The traditional *"Hello world!"* example:
 ``` julia-repl
 julia> using TclTk
 
-julia> TclTk.eval("puts {Hello world!}")
+julia> tcl_eval("puts {Hello world!}")
 Hello world!
 
 ```
 
 which shows how to evaluate a Tcl script. The above output is not the value returned by the
-script as `TclTk.eval` returns `nothing` by default. If we are interested by the result of
-the evaluated script or expression, `TclTk.eval` takes an optional first argument to specify
-the type of the expected result. For example:
+script as `tcl_eval` returns `nothing` by default. If we are interested by the result of the
+evaluated script or expression, `tcl_eval` takes an optional first argument to specify the
+type of the expected result. For example:
 
 ``` julia-repl
-julia> TclTk.eval(Float64, "expr {4*atan(1)}")
+julia> tcl_eval(Float64, "expr {4*atan(1)}")
 3.141592653589793
 ```
 
 The most general return value is a Tcl object which can be reused or converted later:
 
 ``` julia-repl
-julia> x = TclTk.eval(TclObj, "format \"%s/data-%06d.bin\" \"/tmp\" 123")
+julia> x = tcl_eval(TclObj, "format \"%s/data-%06d.bin\" \"/tmp\" 123")
 TclObj("/tmp/data-000123.bin")
 
 julia> String(x) # `string(x)` and `convert(String, x)` work as well
@@ -45,17 +45,17 @@ julia> String(x) # `string(x)` and `convert(String, x)` work as well
 
 Spaces and braces are special characters in Tcl and may have to be properly escaped in
 scripts, perhaps with the help of `TclTk.escape_string`. A better solution, if the script is
-a single Tcl command, is to call `TclTk.exec` which assumes that each argument (after an
+a single Tcl command, is to call `tcl_exec` which assumes that each argument (after an
 optional leading type) is a single Tcl token:
 
 ``` julia-repl
 julia> msg = "- - } Hello world! { - -"
 "- - } Hello world! { - -"
 
-julia> x = TclTk.exec(:puts, msg)
+julia> x = tcl_exec(:puts, msg)
 - - } Hello world! { - -
 
-julia> x = TclTk.exec(String, "format", "%s/%s/data-%06d.bin", ENV["HOME"], "tmp", 123)
+julia> x = tcl_exec(String, "format", "%s/%s/data-%06d.bin", ENV["HOME"], "tmp", 123)
 "/home/eric/tmp/data-000123.bin"
 ```
 
@@ -68,13 +68,10 @@ julia> using TclTk, TestImages
 
 julia> img = testimage("mandrill"); # read some image data
 
-julia> tk_start() # make sure Tk package is loaded and event loop is running
-Tcl interpreter (address: 0x0000000017dc33e0, threadid: 1)
-
 julia> top = Toplevel(background="#282c34")
 Toplevel(".top1")
 
-julia> wm.title(top, "A Nice Image")
+julia> top.title("A Nice Image")
 
 julia> lab = Label(top, image=TkPhoto(permutedims(img)), cursor="target")
 Label(".top1.lab1")
@@ -86,8 +83,6 @@ julia> lab.pack(side="top", padx=20, pady=30)
 The different stages are:
 
 - Load some image data as a Julia array.
-
-- Call `tk_start()` to make sure that Tk package is loaded and the event loop is running.
 
 - Create a top-level window `top` with a given background color.
 

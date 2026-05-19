@@ -5,10 +5,9 @@
 #
 
 """
-    tk_messageBox(interp=TclInterp(), pairs...; kwds...) -> answer::String
+    tk_messageBox(pairs...; kwds...) -> answer::String
 
-Pop up a Tk message box dialog and return the name of the selected button. Tcl interpreter
-`interp` is used to run the dialog.
+Pop up a Tk message box dialog and return the name of the selected button.
 
 # Options
 
@@ -74,20 +73,15 @@ end
 [`tk_getSaveFile`](@ref).
 
 """
-function tk_messageBox(interp::TclInterp, pairs::Pair...; kwds...)
-    # Make sure Tk is started.
-    tk_start(interp)
-
-    # Evaluate command and return the result as a string.
-    return interp.exec(String, "tk_messageBox", pairs...; kwds...)
+function tk_messageBox(pairs::Pair...; kwds...)
+    return tcl_exec(String, "tk_messageBox", pairs...; kwds...)
 end
 
 """
-    tk_chooseColor(interp=TclInterp(), pairs...; kwds...)
+    tk_chooseColor(pairs...; kwds...)
 
 Pop up a Tk dialog box for the user to select a color and return the chosen color as an
-instance of `TkRGB{UInt8}` or `nothing` if the user cancels the dialog. Tcl interpreter
-`interp` is used to run the dialog.
+instance of `TkRGB{UInt8}` or `nothing` if the user cancels the dialog.
 
 # Options
 
@@ -109,12 +103,9 @@ options:
 [`tk_messageBox`](@ref).
 
 """
-function tk_chooseColor(interp::TclInterp, pairs::Pair...; kwds...) :: Union{RGB{N0f8},Nothing}
-    # Make sure Tk is started.
-    tk_start(interp)
-
+function tk_chooseColor(pairs::Pair...; kwds...) :: Union{RGB{N0f8},Nothing}
     # Evaluate command and get the result as a string.
-    color = interp.exec(String, "tk_chooseColor", pairs...; kwds...)
+    color = tcl_exec(String, "tk_chooseColor", pairs...; kwds...)
 
     # Convert to a color.
     isempty(color) && return nothing
@@ -126,10 +117,10 @@ function tk_chooseColor(interp::TclInterp, pairs::Pair...; kwds...) :: Union{RGB
 end
 
 """
-    tk_chooseDirectory(interp=TclInterp(), pairs...; kwds...) -> dir::String
+    tk_chooseDirectory(pairs...; kwds...) -> dir::String
 
 Pop up a Tk dialog box for the user to select a directory and return the chosen directory
-name (an empty string if none). Tcl interpreter `interp` is used to run the dialog.
+name (an empty string if none).
 
 # Options
 
@@ -165,19 +156,15 @@ options:
 [`tk_messageBox`](@ref).
 
 """
-function tk_chooseDirectory(interp::TclInterp, pairs::Pair...; kwds...) :: String
-    # Make sure Tk is started.
-    tk_start(interp)
-
-    # Evaluate command and return the result as a string.
-    return interp.exec(String, "tk_chooseDirectory", pairs...; kwds...)
+function tk_chooseDirectory(pairs::Pair...; kwds...)
+    return tcl_exec(String, "tk_chooseDirectory", pairs...; kwds...)
 end
 
 """
-    tk_getOpenFile(interp=TclInterp(), pairs...; kwds...)
+    tk_getOpenFile(pairs...; kwds...)
 
 Pop up a Tk dialog box for the user to select a file to open and return the name of the
-chosen file (an empty string if none). Tcl interpreter `interp` is used to run the dialog.
+chosen file (an empty string if none).
 
 # Options
 
@@ -238,11 +225,7 @@ options:
 [`tk_messageBox`](@ref).
 
 """
-function tk_getOpenFile(interp::TclInterp, pairs::Pair...; kwds...) :: Union{String,
-                                                                             Vector{String}}
-    # Make sure Tk is started.
-    tk_start(interp)
-
+function tk_getOpenFile(pairs::Pair...; kwds...) :: Union{String, Vector{String}}
     # Determine whether multiple selection is allowed.
     multiple = false
     for (key, val) in pairs
@@ -263,7 +246,7 @@ function tk_getOpenFile(interp::TclInterp, pairs::Pair...; kwds...) :: Union{Str
     end
 
     # Execute command.
-    obj = interp.exec(TclObj, "tk_getOpenFile", pairs...; kwds...)
+    obj = tcl_exec(TclObj, "tk_getOpenFile", pairs...; kwds...)
 
     # Return the result as a string or a vector of string.
     if multiple
@@ -274,10 +257,10 @@ function tk_getOpenFile(interp::TclInterp, pairs::Pair...; kwds...) :: Union{Str
 end
 
 """
-    tk_getSaveFile(interp=TclInterp(), pairs...; kwds...)
+    tk_getSaveFile(pairs...; kwds...)
 
 Pop up a Tk dialog box for the user to select a file to save and return the name of the
-chosen file (an empty string if none). Tcl interpreter `interp` is used to run the dialog.
+chosen file (an empty string if none).
 
 # Options
 
@@ -299,16 +282,6 @@ options:
 [`tk_messageBox`](@ref).
 
 """
-function tk_getSaveFile(interp::TclInterp, pairs::Pair...; kwds...) :: String
-    # Make sure Tk is started.
-    tk_start(interp)
-
-    # Execute command and return the result as a string.
-    return interp.exec(String, "tk_getSaveFile", pairs...; kwds...)
-end
-
-# Provide default interpreter.
-for func in (:tk_messageBox, :tk_chooseColor, :tk_chooseDirectory,
-             :tk_getOpenFile, :tk_getSaveFile)
-    @eval $func(pairs::Pair...; kwds...) = $func(TclInterp(), pairs...; kwds...)
+function tk_getSaveFile(pairs::Pair...; kwds...)
+    return tcl_exec(String, "tk_getSaveFile", pairs...; kwds...)
 end

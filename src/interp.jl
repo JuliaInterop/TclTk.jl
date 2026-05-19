@@ -37,7 +37,7 @@ const interpreter_queue = Channel{Any}(10)
 const interpreter_task = Ref{Task}() # task in charge of processing Tcl calls with an interpreter
 const current_interpreter = Ref{Ptr{Tcl_Interp}}(0) # Tcl interpreter
 const interpreter_lock = ReentrantLock() # to protect shared data between tasks
-const interpreter_is_alive = Ref{Bool}(false)
+const interpreter_ready = Ref{Bool}(false)
 
 """
     result = TclTk.Core.with_interpreter(f)
@@ -56,7 +56,7 @@ function with_interpreter(f::Function)
     # Make sure a Tcl interpreter has been launched.
     lock(interpreter_lock)
     try
-        interpreter_is_alive[] || launch_interpreter()
+        interpreter_ready[] || launch_interpreter()
     finally
         unlock(interpreter_lock)
     end
@@ -98,7 +98,7 @@ function shutdown_interpreter()
     lock(interpreter_lock)
     try
         # Instruct interpreter task to exit.
-        interpreter_is_alive[] = false
+        interpreter_ready[] = false
     finally
         unlock(interpreter_lock)
     end
@@ -108,12 +108,12 @@ function shutdown_interpreter()
 end
 
 # Launch a new Tcl interpreter. This function shall only be called by a task who owns
-# `interpreter_lock` and if `interpreter_is_alive[]` is false. Only the latter assertion is
+# `interpreter_lock` and if `interpreter_ready[]` is false. Only the latter assertion is
 # verified. This function may throw; otherwise, `interpreter_task[]` is defined after return
 # of this function.
 @noinline function launch_interpreter()
     # Sanity check.
-    interpreter_is_alive[] && throw(AssertionError("a Tcl interpreter already exists"))
+    interpreter_ready[] && throw(AssertionError("a Tcl interpreter already exists"))
 
     # Create a Tcl interpreter.
     interp = @ccall libtcl.Tcl_CreateInterp()::Ptr{Tcl_Interp}
@@ -125,31 +125,30 @@ end
         ptr = Tcl_SetVar(interp, "tcl_library", tcl_library,
                          TCL_GLOBAL_ONLY|TCL_LEAVE_ERR_MSG)
         isnull(ptr) && tcl_error("unable to set `tcl_library`: ",
-                                 unsafe_result(String, interp))
+                                 unsafe_get_result(String, interp))
         status = @ccall libtcl.Tcl_Init(interp::Ptr{Tcl_Interp})::TclStatus
         status == TCL_OK || tcl_error("unable to initialize Tcl interpreter: ",
-                                      unsafe_result(String, interp))
-        #=
+                                      unsafe_get_result(String, interp))
+
         # Initialize Tcl interpreter to find Tk library scripts.
         tk_library = joinpath(dirname(dirname(Tk_jll.libtk_path)), "lib",
                               "tk$(TCL_MAJOR_VERSION).$(TCL_MINOR_VERSION)")
         ptr = Tcl_SetVar(interp, "tk_library", tk_library,
                          TCL_GLOBAL_ONLY|TCL_LEAVE_ERR_MSG)
         isnull(ptr) && tcl_error("unable to set `tk_library`: ",
-                                 unsafe_result(String, interp))
+                                 unsafe_get_result(String, interp))
         # Load Tk and Ttk packages. It is not needed to explicitly load these packages, it
         # is sufficient to call `Tk_Init`.
         status = @ccall libtk.Tk_Init(interp::Ptr{Tcl_Interp})::TclStatus
         status == TCL_OK || tcl_error("unable to initialize Tk interpreter: ",
-                                      unsafe_result(String, interp))
+                                      unsafe_get_result(String, interp))
         # Load Tcl-side helpers for working with Julia interface.
         srcdir = @__DIR__
         path = joinpath(srcdir, "julia.tcl")
         code = replace(read(path, String), "@SRCDIR@" => tcl_quote_string(srcdir))
-        status =  @ccall libtcl.Tcl_Eval(interp::Ptr{Tcl_Interp}, code::Cstring)::TclStatus
+        status = Tcl_Eval(interp, code)
         isnull(ptr) && tcl_error("unable to load Tcl script in \"$path\": ",
-        unsafe_result(String, interp))
-        =#
+                                 unsafe_get_result(String, interp))
 
         # Store interpreter in global variable.
         Tcl_Preserve(interp)
@@ -165,7 +164,7 @@ end
     task.sticky = true # this task must not migrate to another thread
     schedule(task)
     interpreter_task[] = task
-    interpreter_is_alive[] = true
+    interpreter_ready[] = true
 
     # Start processing events.
     resume_events()
@@ -174,9 +173,9 @@ end
 
 # Callback called to evaluate a Tcl call requiring an interpreter. Must only be executed in
 # the same thread as the interpreter. To terminate the task, it is sufficient to set
-# `interpreter_is_alive[]` to `false` under the control of `interpreter_lock[]`.
+# `interpreter_ready[]` to `false` under the control of `interpreter_lock[]`.
 function process_calls()
-    while interpreter_is_alive[]
+    while interpreter_ready[]
         # Type assertion below reduces allocations.
         f, chn = take!(interpreter_queue)::Tuple{Function,Channel{Any}}
         try
@@ -195,19 +194,40 @@ function process_calls()
 end
 
 """
-    TclTk.Core.unsafe_result(T, interp=TclTk.Core.current_interpreter[]) -> val
+    TclTk.Core.unsafe_get_result(T, interp) -> val
 
 Return the result of Tcl interpreter `interp` as a value of type `T`.
 
-The function is *unsafe*: it must only be called from the thread where lives the interpreter
-and the interpreter must be valid (non-null pointer) and remain so during the call to this
-function.
+This function must only be called from the thread where lives the interpreter and the
+interpreter must be valid and remain so during the call to this function.
 
 """
-function unsafe_result(::Type{T}, interp::Ptr{Tcl_Interp} = current_interpreter[]) where {T}
+function unsafe_get_result(::Type{T}, interp::InterpPtr) where {T}
     return unsafe_convert(T, Tcl_GetObjResult(interp))
 end
 
+"""
+    TclTk.Core.unsafe_set_result(interp, value)
+
+Set the result of Tcl interpreter `interp` to be `value`. If `value` is `nothing`, reset
+interpreter's result.
+
+This function must only be called from the thread where lives the interpreter and the
+interpreter and the value must be valid and remain so during the call to this function.
+
+"""
+function unsafe_set_result(interp::InterpPtr, value)
+    # As can be seen in `generic/tclResult.c`, `Tcl_SetObjResult` does manage the reference
+    # count of its object argument so it is OK to directly pass a temporary object for the
+    # value.
+    GC.@preserve value unsafe_set_result(interp, new_object(value))
+end
+function unsafe_set_result(interp::InterpPtr, obj::ObjPtr)
+    @ccall libtcl.Tcl_SetObjResult(interp::Ptr{Tcl_Interp}, obj::Ptr{Tcl_Obj})::Cvoid
+end
+function unsafe_set_result(interp::InterpPtr, ::Nothing)
+    @ccall libtcl.Tcl_ResetResult(interp::Ptr{Tcl_Interp})::Cvoid
+end
 #------------------------------------------------------- Evaluation of scripts or commands -
 
 const default_eval_flags = TCL_EVAL_DIRECT | TCL_EVAL_GLOBAL

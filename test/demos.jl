@@ -60,9 +60,8 @@ function addseedismiss(parent, child)
 end
 
 function labelframedemo()
-    interp = tk_start()
     wname = ".labelframe"
-    interp.eval("::catch {destroy $wname}")
+    tcl_eval("::catch {destroy $wname}")
     w = Toplevel(wname)
     interp(:wm, :title, w, "Labelframe Demonstration")
     interp(:wm, :iconname, w, "labelframe")
@@ -79,12 +78,12 @@ function labelframedemo()
 
     # Demo area
     wf = Frame(w, "f")
-    pack(wf, :side => "bottom", :fill => "both", :expand => true)
+    wf.pack(:side => "bottom", :fill => "both", :expand => true)
 
     # A group of radiobuttons in a labelframe
 
     f = Labelframe(wf, "f", :text => "Value", :padx => 2, :pady => 2)
-    grid(f, :row => 0, :column => 0, :pady => "2m", :padx => "2m")
+    f.grid(:row => 0, :column => 0, :pady => "2m", :padx => "2m")
 
     for value in 1:4
         pack(Radiobutton(f,"b$value", :text => "This is value $value",
@@ -93,7 +92,7 @@ function labelframedemo()
     end
 
     # Using a label window to control a group of options.
-    interp.eval(raw"""
+    tcl_eval(raw"""
             proc lfEnableButtons {w} {
                 foreach child [winfo children $w] {
                     if {$child == "$w.cb"} continue
@@ -110,33 +109,22 @@ function labelframedemo()
     f2_cb = Checkbutton(f2, "cb", :text => "Use this option.",
                           :variable => "lfdummy2",
                           :command => "lfEnableButtons $f2", :padx => 0)
-    f2("configure", :labelwidget => f2_cb)
-    grid(f2, :row => 0, :column => 1, :pady => "2m", :padx => "2m")
+    f2.configure(:labelwidget => f2_cb)
+    f2.grid(:row => 0, :column => 1, :pady => "2m", :padx => "2m")
 
     for t in 0:2
         pack(Checkbutton(f2,"b$t", :text => "Option$(t+1)"),
              :side => "top", :fill => "x", :pady => 2)
     end
-    interp("lfEnableButtons", f2)
+    tcl_exec("lfEnableButtons", f2)
 
     grid(:columnconfigure, wf, (0,1), :weight => 1)
 end
 
 function runtests2()
-    if false
-        interp = TclInterp()
-        interp.eval("package require Tk");
-        resume()
-        name = interp.eval(TclObj, "image create photo -file /home/eric/work/code/CImg/CImg-1.5.5/examples/img/lena.pgm")
-        interp.eval("pack [button .b -image $name]")
-        d = TclTk.getpixels(interp, name, Val{:red});
-    else
-        TclTk.eval("package require Tk");
-        resume()
-        name = TclTk.eval(TclObj, "image create photo -file /home/eric/work/code/CImg/CImg-1.5.5/examples/img/lena.pgm")
-        TclTk.eval("pack [button .b -image $name]")
-        d = TclTk.getpixels(name, Val{:red});
-    end
+    name = tcl_eval(TclObj, "image create photo -file /home/eric/work/code/CImg/CImg-1.5.5/examples/img/lena.pgm")
+    tcl_eval("pack [button .b -image $name]")
+    d = TclTk.getpixels(interp, name, Val{:red});
     return d;
 end
 

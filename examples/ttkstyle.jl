@@ -5,9 +5,8 @@
 #
 # Adapted from Tcl/Tk widget demo (file `ttkbut.tcl`).
 
-interp = tk_start()
 w = ".ttkstyle"
-interp.eval("catch {destroy $w}")
+tcl_eval("catch {destroy $w}")
 top = Toplevel(interp, w)
 wm.title(top, "Simple Ttk Widgets")
 wm.iconname(top, "ttkstyle")
@@ -23,29 +22,29 @@ msg.pack(side=:top, fill=:x)
 
 ## Add buttons for setting the theme
 buttons = Labelframe(top, text="Buttons")
-for theme in interp.eval(Vector{String}, "ttk::themes")
+for theme in tcl_exec(Vector{String}, "ttk::themes")
     local btn = Button(buttons, text=theme, command="ttk::setTheme $theme")
     btn.pack(pady=2)
 end
 
 ## Helper procedure for the top checkbutton
-setState(interp::TclInterp, args::TclObj) =
-    setState(interp, args[2 => String], args[3 => Vector{String}], args[4 => String])
+setState(args::TclObj) =
+    setState(fetch(Tuple{String,Vector{String},String}, args, 2:4)...)
 
-function setState(interp::TclInterp, rootWidget, exceptThese, value)
+function setState(rootWidget, exceptThese, value)
     rootWidget ∈ exceptThese && return
     ## Non-Ttk widgets (e.g. the toplevel) will fail, so make it silent
-    interp.eval("catch {$rootWidget state $value}")
+    tcl_eval("catch {$rootWidget state $value}")
     ## Recursively invoke on all children of this root that are in the same
     ## toplevel widget
-    rootToplevel = interp(String, :winfo, :toplevel, rootWidget)
-    for w in interp(Vector{String}, :winfo, :children, rootWidget)
-	if interp(String, :winfo, :toplevel, w) == rootToplevel
-	    setState(interp, w, exceptThese, value)
+    rootToplevel = tcl_exec(String, :winfo, :toplevel, rootWidget)
+    for w in tcl_exec(Vector{String}, :winfo, :children, rootWidget)
+	if tcl_exec(String, :winfo, :toplevel, w) == rootToplevel
+	    setState(w, exceptThese, value)
 	end
     end
 end
-setState_ = TclTk.Callback(setState, interp, "setState")
+setState_ = TclCallback(setState, "setState")
 enabled = TclVariable{Bool}("enabled")
 enabled[] = true
 
@@ -75,6 +74,6 @@ TclTk.pack(r1, r2, r3, r4, r5, fill=:x, padx=3, pady=2)
 ## Arrange things neatly
 f = Frame(top)
 f.pack(fill="both", expand=true)
-interp(:lower, f)
-TclTk.grid(buttons, checks, radios, in=f, sticky="nwe", pady=2, padx=3)
-TclTk.grid(:columnconfigure, f, (0, 1, 2), weight=1, uniform=true)
+tcl_exec(:lower, f)
+tk_grid(buttons, checks, radios, in=f, sticky="nwe", pady=2, padx=3)
+tk_grid(:columnconfigure, f, (0, 1, 2), weight=1, uniform=true)

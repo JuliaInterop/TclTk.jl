@@ -817,7 +817,7 @@ end
 @testset "Callbacks" begin
     # Create a simple callback in a private interpreter.
     private = @inferred TclInterp(:private)
-    f = @inferred TclTk.Callback(count_callback, private)
+    f = @inferred TclCallback(count_callback, private)
 
     # Callback properties.
     @test length(@inferred propertynames(f)) == 4
@@ -863,8 +863,8 @@ end
     @test TclTk.deletecommand(private, proc) == false
 
     # Deal with other returned values.
-    f1 = @inferred TclTk.Callback(other_count_callback, private)
-    f2 = @inferred TclTk.Callback(yet_another_count_callback, private)
+    f1 = @inferred TclCallback(other_count_callback, private)
+    f2 = @inferred TclCallback(yet_another_count_callback, private)
     callback_counter[] = 0
     @test @inferred(private(String, f1.name)) == ""
     @test callback_counter[] == 1
@@ -876,7 +876,7 @@ end
     # A more complex callback in the shared interpreter.
     interp = @inferred TclInterp()
     name = "jl_simple_callback"
-    f = @inferred TclTk.Callback(simple_callback, name)
+    f = @inferred TclCallback(simple_callback, name)
     @test f.interp === interp
     proc = f.name
     @test proc isa String

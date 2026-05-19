@@ -6,8 +6,7 @@ using Colors
 using Colors.FixedPointNumbers: N0f8, N0f16
 
 @testset "Tk Images" begin
-    interp = @inferred tk_start()
-    props = sort!([:height, :interp, :inuse, :name, :size, :type, :width])
+    props = sort!([:height, :inuse, :name, :size, :type, :width])
 
     # Bitmap image.
     xbm = @inferred TkBitmap(file=joinpath(@__DIR__, "rule.xbm"))
@@ -15,7 +14,6 @@ using Colors.FixedPointNumbers: N0f8, N0f16
     # Image properties.
     @test sort!(collect(propertynames(xbm))) == props
     @test xbm.type === :bitmap
-    @test xbm.interp === interp
     @test xbm.inuse === false
     @test xbm.name isa TclObj
     @test startswith(string(xbm.name), "image")
@@ -66,13 +64,12 @@ using Colors.FixedPointNumbers: N0f8, N0f16
     @test endswith(path, "letters.xbm")
 
     # Photo image.
-    png = @inferred TkPhoto(interp, "m51", :file => joinpath(@__DIR__, "m51-tiny.png"))
+    png = @inferred TkPhoto("m51", :file => joinpath(@__DIR__, "m51-tiny.png"))
     @test png isa TkPhoto
 
     # Image properties.
     @test sort!(collect(propertynames(png))) == props
     @test png.type === :photo
-    @test png.interp === interp
     @test png.inuse === false
     @test png.name == "m51"
     @test png.width === 48

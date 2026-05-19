@@ -13,5 +13,6 @@ TclTk.Core.unsafe_convert
 TclTk.Core.unsafe_error
 TclTk.Core.unsafe_object_type
 TclTk.Core.unsafe_objptr
-TclTk.Core.unsafe_result
+TclTk.Core.unsafe_get_result
+TclTk.Core.unsafe_set_result
 ```

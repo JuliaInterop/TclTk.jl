@@ -3,11 +3,6 @@
 Tk images are stored in memory and are meant to be displayed in Tk widgets (usually with the
 `-image` option).
 
-!!! note
-    `Tk` extension must have been loaded in the interpreter before using images. This can be
-    done with [`tk_start`](@ref).
-
-
 ## Image creation
 
 To build a Tk image, call the constructor [`TkImage`](@ref) as follows:
@@ -61,8 +56,6 @@ For example:
 
 ```julia-repl
 julia> using TclTk, Colors
-
-julia> tk_start();
 
 julia> img = TkBitmap(:data => """"#define rule_width 32
        #define rule_height 17
@@ -119,8 +112,6 @@ sub-commands depend on the image type. For example, for a `TkPhoto` image, `cget
 `configure` are possible sub-commands:
 
 ```julia-repl
-julia> tk_start()
-
 julia> img = TkImage()
 TkPhoto (alias for TkImage{:photo}) name = "image1", size = (0, 0)
 
@@ -139,8 +130,6 @@ Public functions [`TclTk.cget`](@ref) and [`TclTk.configure`](@ref) are applicab
 image instance. For example:
 
 ```julia-repl
-julia> tk_start()
-
 julia> img = TkImage()
 TkPhoto (alias for TkImage{:photo}) name = "image1", size = (0, 0)
 

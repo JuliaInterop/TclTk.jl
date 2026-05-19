@@ -7,12 +7,10 @@ function calc_function(interp::TclInterp, args::TclObj)
     resolution = 1e3
     interp["meters"] = round(feet*0.3048*resolution)/resolution
 end
-calc_callback = TclTk.Callback(calc_function)
-
-interp = tk_start()
+calc_callback = TclCallback(calc_function)
 
 top = Toplevel(interp)
-wm.title(top, "Feet to Meters")
+top.title("Feet to Meters")
 
 frame = Frame(top, padding=(3, 3, 12, 12))
 frame.grid(column=0, row=0, sticky="nwes")
@@ -35,11 +33,11 @@ islbl.grid(column=1, row=2, sticky="e")
 mlbl = Label(frame, text="meters")
 mlbl.grid(column=3, row=2, sticky="w")
 
-interp(:grid, :columnconfigure, top, 0, weight=1)
-interp(:grid, :rowconfigure, top, 0, weight=1)
-interp(:grid, :columnconfigure, frame, 2, weight=1)
+tk_grid(:columnconfigure, top, 0, weight=1)
+tk_grid(:rowconfigure, top, 0, weight=1)
+tk_grid(:columnconfigure, frame, 2, weight=1)
 for w in frame.children
-    interp(:grid, :configure, w, padx=5, pady=5)
+    tk_grid(:configure, w, padx=5, pady=5)
 end
-interp(:focus, feet)
+tcl_exec(:focus, feet)
 bind(top, "<Return>", calc_callback.name)

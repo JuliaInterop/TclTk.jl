@@ -24,6 +24,7 @@ export
 
     # Tcl methods.
     tcl_concat,
+    tcl_deletecommand,
     tcl_error,
     tcl_eval,
     tcl_evalfile,
@@ -37,26 +38,37 @@ export
     tcl_unsetvar,
     tcl_version,
 
+    # Tk images.
+    TkBitmap,
+    TkImage,
+    TkPhoto,
+
+    # Widgets.
+    TkWidget,
+
+    # Tk dialogs.
+    tk_chooseColor,
+    tk_chooseDirectory,
+    tk_getOpenFile,
+    tk_getSaveFile,
+    tk_messageBox,
+
     # Re-export from UnsetIndex.
     unset
 
-using Base
 using CEnum
+using ColorTypes
+using Colors
+using FixedPointNumbers
 using Reexport
 using UnsetIndex
 
 include("CoreDefs.jl")
 include("types.jl")
 include("api.jl")
+include("dialogs.jl")
 include("Core.jl")
 #FIXME @reexport import .Core:
-    #FIXME # Tk images.
-    #FIXME TkBitmap,
-    #FIXME TkImage,
-    #FIXME TkPhoto,
-    #FIXME
-    #FIXME # Widgets.
-    #FIXME TkWidget,
     #FIXME Button,
     #FIXME Canvas,
     #FIXME Checkbutton,
@@ -80,15 +92,7 @@ include("Core.jl")
     #FIXME Spinbox,
     #FIXME Text,
     #FIXME Toplevel,
-    #FIXME Treeview,
-
-    # Methods.
-    #FIXME tk_chooseColor,
-    #FIXME tk_chooseDirectory,
-    #FIXME tk_getOpenFile,
-    #FIXME tk_getSaveFile,
-    #FIXME tk_messageBox
-
+    #FIXME Treeview
 #FIXME # Non-exported public symbols.
 #FIXME for sym in (
 #FIXME     # Modules.
@@ -96,7 +100,6 @@ include("Core.jl")
 #FIXME     :Ttk,
 #FIXME
 #FIXME     # Types.
-#FIXME     :Callback,
 #FIXME     :NothingOr,
 #FIXME     :Value,
 #FIXME     :WideInt,
@@ -120,5 +123,12 @@ include("Core.jl")
 #FIXME         @eval $(Base.Expr(:public, sym))
 #FIXME     end
 #FIXME end
+
+# TODO @deprecate tk_messageBox(args...; kwds...) tk_messagebox(args...; kwds...) true
+# TODO @deprecate tk_getSaveFile(args...; kwds...) tk_getsavefile(args...; kwds...) true
+# TODO @deprecate tk_getOpenFile(args...; kwds...) tk_getopenfile(args...; kwds...) true
+# TODO @deprecate tk_getOpenFiles(args...; kwds...) tk_getopenfiles(args...; kwds...) true
+# TODO @deprecate tk_chooseColor(args...; kwds...) tk_choosecolor(args...; kwds...) true
+# TODO @deprecate tk_chooseDirectory(args...; kwds...) tk_choosedirectory(args...; kwds...) true
 
 end # module

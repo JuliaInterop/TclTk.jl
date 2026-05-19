@@ -434,20 +434,12 @@ function Tcl_DeleteInterp(interp)
     @ccall libtcl.Tcl_DeleteInterp(interp::Ptr{Tcl_Interp})::Cvoid
 end
 
-function Tcl_SetObjResult(interp, obj)
-    @ccall libtcl.Tcl_SetObjResult(interp::Ptr{Tcl_Interp}, obj::Ptr{Tcl_Obj})::Cvoid
-end
-
 function Tcl_GetStringResult(interp)
     return Tcl_GetString(Tcl_GetObjResult(interp))
 end
 
 function Tcl_GetObjResult(interp)
     @ccall libtcl.Tcl_GetObjResult(interp::Ptr{Tcl_Interp})::Ptr{Tcl_Obj}
-end
-
-function Tcl_ResetResult(interp)
-    @ccall libtcl.Tcl_ResetResult(interp::Ptr{Tcl_Interp})::Cvoid
 end
 
 # Reference counting.
@@ -462,8 +454,14 @@ end
 
 #--------------------------------------------------------------- Evaluation of Tcl scripts -
 
-# NOTE `Tcl_Eval` becomes a macro in Tcl 9.
-Tcl_Eval(interp, script) = Tcl_EvalEx(interp, script, -1, 0)
+if TCL_MAJOR_VERSION ≥ 9
+    # NOTE `Tcl_Eval` becomes a macro in Tcl 9.
+    Tcl_Eval(interp, script) = Tcl_EvalEx(interp, script, -1, 0)
+else
+    function Tcl_Eval(interp, script)
+        @ccall libtcl.Tcl_Eval(interp::Ptr{Tcl_Interp}, script::Cstring)::TclStatus
+    end
+end
 
 function Tcl_EvalFile(interp, fileName)
     @ccall libtcl.Tcl_EvalFile(interp::Ptr{Tcl_Interp}, fileName::Cstring)::TclStatus
@@ -492,43 +490,6 @@ end
 
 function Tcl_DoWhenIdle(proc, clientData)
     @ccall libtcl.Tcl_DoWhenIdle(proc::Ptr{Tcl_IdleProc}, clientData::ClientData)::Cvoid
-end
-
-#---------------------------------------------------------------------------- Tcl commands -
-
-function Tcl_CreateCommand(interp, cmdName, proc, clientData, deleteProc)
-    @ccall libtcl.Tcl_CreateCommand(interp::Ptr{Tcl_Interp}, cmdName::Cstring,
-                                    proc::Ptr{Tcl_CmdProc}, clientData::ClientData,
-                                    deleteProc::Ptr{Tcl_CmdDeleteProc})::Tcl_Command
-end
-
-function Tcl_CreateObjCommand(interp, cmdName, proc, clientData, deleteProc)
-    @ccall libtcl.Tcl_CreateObjCommand(interp::Ptr{Tcl_Interp}, cmdName::Cstring,
-                                       proc::Ptr{Tcl_ObjCmdProc}, clientData::ClientData,
-                                       deleteProc::Ptr{Tcl_CmdDeleteProc})::Tcl_Command
-end
-
-function Tcl_DeleteCommand(interp, cmdName)
-    @ccall libtcl.Tcl_DeleteCommand(interp::Ptr{Tcl_Interp}, cmdName::Cstring)::Cint
-end
-
-function Tcl_DeleteCommandFromToken(interp, command)
-    @ccall libtcl.Tcl_DeleteCommandFromToken(interp::Ptr{Tcl_Interp},
-                                             command::Tcl_Command)::Cint
-end
-
-function Tcl_GetCommandName(interp, command)
-    @ccall libtcl.Tcl_GetCommandName(interp::Ptr{Tcl_Interp}, command::Tcl_Command)::Cstring
-end
-
-function Tcl_GetCommandFullName(interp, command, objPtr)
-    @ccall libtcl.Tcl_GetCommandFullName(interp::Ptr{Tcl_Interp}, command::Tcl_Command,
-                                         objPtr::Ptr{Tcl_Obj})::Cvoid
-end
-
-function Tcl_GetCommandFromObj(interp, objPtr)
-    @ccall libtcl.Tcl_GetCommandFromObj(interp::Ptr{Tcl_Interp},
-                                        objPtr::Ptr{Tcl_Obj})::Tcl_Command
 end
 
 #--------------------------------------------------------------------------- Tcl variables -

@@ -33,7 +33,7 @@ macro TkWidget(structname, class, command, prefix)
         $type(args...; kwds...) = build($type, $class, $command, $prefix, args...; kwds...)
 
         # Make the widget callable. FIXME make this at the TkWidget level
-        (w::$type)(args...; kwds...) = exec(w, args...; kwds...)
+        (w::$type)(args...; kwds...) = tcl_exec(w, args...; kwds...)
 
         # Register widget class.
         register_widget_class($class, $type)
@@ -420,7 +420,7 @@ end
 (f::SubCommand{:bind, Canvas})(tag::TagOrId, seq) = f(TclObj, tag, seq)
 (f::SubCommand{:bind, Canvas})(tag::TagOrId, seq, script) = f(TclObj, tag, seq, script)
 # FIXME (f::SubCommand{:bind, Canvas})(::Type{T}, tag::TagOrId, args...) where {T} =
-# FIXME     exec(T, f.caller, :bind, tag, args...)
+# FIXME     tcl_exec(T, f.caller, :bind, tag, args...)
 
 (f::SubCommand{:canvasx, Canvas})(x::Union{TclObj,Real}) = f(Float64, x)
 (f::SubCommand{:canvasy, Canvas})(y::Union{TclObj,Real}) = f(Float64, y)
@@ -434,7 +434,7 @@ end
 
 (f::SubCommand{:itemcget, Canvas})(tag::TagOrId, opt::Word) = f(TclObj, tag, opt)
 (f::SubCommand{:itemcget, Canvas})(::Type{T}, tag::TagOrId, opt::Word) where {T} =
-    exec(T, f.caller, :itemcget, tag, with_hyphen(opt))
+    tcl_exec(T, f.caller, :itemcget, tag, with_hyphen(opt))
 
 # TODO itemconfigure
 
@@ -475,7 +475,6 @@ end
 function build(::Type{T}, class::Symbol, command::String, prefix::String,
                interp::TclInterp, pairs::Pair...; kwds...) where {T<:TkWidget}
     startswith(prefix, '.') || argument_error("missing parent widget")
-    tk_start() # make sure Tk has been loaded
     path = interp(TclObj, command, widget_auto_path(interp, "", prefix), pairs...; kwds...)
     return T(interp, Verified(path))
 end
@@ -483,8 +482,6 @@ end
 # Build a widget given its full path.
 function build(::Type{T}, class::Symbol, command::String, prefix::String,
                interp::TclInterp, path::Name, pairs::Pair...; kwds...) where {T<:TkWidget}
-    # If top-level widget, make sure Tk has been loaded.
-    startswith(prefix, '.') && tk_start()
     if winfo_exists(interp, path)
         # Re-use existing widget.
         trueclass = winfo_class(interp, path)
@@ -543,7 +540,7 @@ Base.parent(w::TkWidget) = winfo_parent(w)
 TclObj(w::TkWidget) = w.path
 Base.convert(::Type{TclObj}, w::TkWidget) = TclObj(w)::TclObj
 # FIXME Base.convert(::Type{String}, w::TkWidget) = ...
-unsafe_objptr(w::TkWidget) = unsafe_objptr(TclObj(w), "Tk widget") # used in `exec`
+unsafe_objptr(w::TkWidget) = unsafe_objptr(TclObj(w), "Tk widget") # used in `tcl_exec`
 
 # We want to have the object type and path both printed in the REPL but want only the object
 # path with the `string` method or for string interpolation. Note that "$w" and `string(w)`
@@ -589,9 +586,9 @@ Change some options of widget or image `w`. Trailing `pairs...` arguments and ke
 
 """
 configure(::Type{T}, w::TkObject, pairs...; kwds...) where {T} =
-    exec(T, w, :configure, pairs...; kwds...)
+    tcl_exec(T, w, :configure, pairs...; kwds...)
 configure(::Type{T}, w::TkObject, opt::Word) where {T} =
-    exec(T, w, :configure, with_hyphen(opt))
+    tcl_exec(T, w, :configure, with_hyphen(opt))
 
 # Default result type depends on the number of arguments.
 configure(w::TkObject) = configure(TclObj, w)
@@ -614,14 +611,14 @@ leading hyphen may be omitted). Another way to obtain an option value is:
 """
 cget(w::TkObject, opt::Word) = cget(TclObj, w, opt)
 cget(w::TkObject, ::Type{T}, opt::Word) where {T} = cget(T, w, opt)
-cget(::Type{T}, w::TkObject, opt::Word) where {T} = exec(T, w, :cget, with_hyphen(opt))
+cget(::Type{T}, w::TkObject, opt::Word) where {T} = tcl_exec(T, w, :cget, with_hyphen(opt))
 
 Base.getindex(w::TkObject, key::Word) = cget(w, key)
 @inline Base.getindex(w::TkObject, (key,T)::Pair{<:Word,DataType}) = cget(T, w, key)
 Base.getindex(w::TkObject, ::Type{T}, key::Word) where {T} = cget(T, w, key)
 Base.getindex(w::TkObject, key::Word, ::Type{T}) where {T} = cget(T, w, key)
 function Base.setindex!(w::TkObject, val, key::Word)
-    exec(Nothing, w, :configure, key => val)
+    tcl_exec(Nothing, w, :configure, key => val)
     return w
 end
 
@@ -656,7 +653,6 @@ For example:
 
 ```julia
 using TclTk
-tk_start()
 top = Toplevel()
 wm.title(top, "A simple example")
 btn = Button(top, text="Click me", command="puts {ouch!}")

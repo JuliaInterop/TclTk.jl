@@ -37,7 +37,7 @@ tcl_unsetvar
 ## Callbacks
 
 ```@doc
-TclTk.Callback
+TclCallback
 ```
 
 ## Widgets

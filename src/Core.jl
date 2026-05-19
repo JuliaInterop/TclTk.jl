@@ -7,6 +7,12 @@ module Core
 
 using ..TclTk
 
+using ..TclTk:
+    _TclObj,
+    TkObject,
+    Verified,
+    WrappedObject
+
 # Import public symbols that are implemented or extended in this module.
 import ..TclTk:
     # Constructors.
@@ -16,6 +22,7 @@ import ..TclTk:
 
     # Tcl methods.
     tcl_concat,
+    tcl_deletecommand,
     tcl_eval,
     tcl_evalfile,
     tcl_exec,
@@ -108,10 +115,9 @@ include("objects.jl")
 include("lists.jl")
 include("interp.jl")
 include("variables.jl")
-#include("callbacks.jl")
-#include("colors.jl")
+include("callbacks.jl")
+include("colors.jl")
 #include("widgets.jl")
-#include("dialogs.jl")
 #include("images.jl")
 #include("wm.jl")
 
@@ -133,11 +139,11 @@ function __init__()
     # strings.
     unsafe_register_new_typename(ObjTypePtr(0))
 
-    #FIXME # Compile C functions for callbacks.
-    #FIXME release_object_proc[] = @cfunction(unsafe_release, Cvoid, (Ptr{Cvoid},))
-    #FIXME eval_command_proc[] = @cfunction(eval_command, TclStatus,
-    #FIXME                                  (ClientData, Ptr{Tcl_Interp},
-    #FIXME                                   Cint, Ptr{Ptr{Tcl_Obj}}))
+    # Compile C functions for callbacks.
+    release_object_proc[] = @cfunction(unsafe_release, Cvoid, (Ptr{Cvoid},))
+    eval_command_proc[] = @cfunction(eval_command, TclStatus,
+                                     (ClientData, Ptr{Tcl_Interp},
+                                      Cint, Ptr{Ptr{Tcl_Obj}}))
 
     return nothing
 end

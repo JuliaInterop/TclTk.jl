@@ -315,7 +315,7 @@ end
         varname = unsafe_variable_name(part1, part2)
         mesg = "cannot "*op*" Tcl variable \""*varname*"\""
     else
-        mesg = unsafe_result(String, interp)
+        mesg = unsafe_get_result(String, interp)
     end
     throw(TclError(mesg))
 end

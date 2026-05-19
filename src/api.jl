@@ -70,6 +70,9 @@ function tcl_isassigned end
 function tcl_setvar end
 function tcl_unsetvar end
 
+#------------------------------------------------------------------------------- Callbacks -
+function tcl_deletecommand end
+
 #---------------------------------------------------------------------------- Quote string -
 
 """

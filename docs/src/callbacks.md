@@ -10,17 +10,17 @@ the command arguments (a list of Tcl objects).
 To show how callbacks work, we start with a simple example:
 
 ```julia-repl
-julia> function myfunc(interp::TclInterp, args::TclObj)
+julia> function myfunc(args::TclObj)
            io = stdout
            print(io, "Called with arguments: ")
            show(io, args)
        end
 myfunc (generic function with 1 method)
 
-julia> cb = TclTk.Callback(myfunc, "jl_myfunc")
-TclTk.Callback: `myfunc` (in Julia) => "::jl_myfunc" (in Tcl)
+julia> cb = TclCallback(myfunc, "jl_myfunc")
+TclCallback: `myfunc` (in Julia) => "::jl_myfunc" (in Tcl)
 
-julia> TclTk.exec(Nothing, "jl_myfunc", :arg1, 2, 3.0, "4th arg")
+julia> tcl_exec(Nothing, "jl_myfunc", :arg1, 2, 3.0, "4th arg")
 Called with arguments: TclObj(("jl_myfunc", "arg1", 2, 3.0, "4th arg",))
 
 ```
@@ -28,21 +28,20 @@ Called with arguments: TclObj(("jl_myfunc", "arg1", 2, 3.0, "4th arg",))
 In the above example:
 
 * A Julia function is defined with the expected signature for a callback. When this function
-  is called, `interp` is the calling Tcl interpreter and `args` is a Tcl list of objects.
-  The first element of `args` is the name of the calling Tcl command while subsequent
-  elements in `args` are the arguments given to the command.
+  is called, `args` is a Tcl list of objects: the first element of `args` is the name of the
+  calling Tcl command while subsequent elements in `args` are the arguments given to the
+  command.
 
-* The constructor `TclTk.Callback` is called to associate the Julia function with a new
-  command named `"jl_myfunc"` in a Tcl interpreter. Since no interpreter is specified in
-  this example, the shared Tcl interpreter of the thread is assumed.
+* The constructor `TclCallback` is called to associate the Julia function with a new
+  command named `"jl_myfunc"` in the Tcl interpreter.
 
-* The command is executed by [`TclTk.exec`](@ref) with a number of arguments to demonstrate
+* The command is executed by [`tcl_exec`](@ref) with a number of arguments to demonstrate
   how they are transmitted to the Julia function.
 
 
 ## Callback constructor arguments
 
-The `TclTk.Callback` constructor may be called with up to 3 arguments:
+The `TclCallback` constructor may be called with up to 3 arguments:
 
 * A mandatory Julia function. This function is called when the associated Tcl command is
   executed.
@@ -84,8 +83,6 @@ A callback, say `cb`, has the following properties:
 
 * `cb.func` is the Julia function of the callback.
 
-* `cb.interp` is the Tcl interpreter where lives the command associated with the callback.
-
 * `cb.name` is the name of the Tcl command associated with the callback. This name is
   prefixed by the full namespace path so that it can be used in any Tcl script and from any
   Tcl namespace. Hence, this name always starts by `"::"`.
@@ -104,12 +101,10 @@ As another callback example, we build a simple Graphical User Interface (GUI) wh
 location of mouse clicks are reported:
 
 ```julia-repl
-julia> tk_start(); # make sure Tk package is loaded and event loop is running
-
 julia> top = Toplevel(:background => "#282c34")
 Toplevel(".top1")
 
-julia> wm.title(top, "Callback demo")
+julia> tk_wm.title(top, "Callback demo")
 
 julia> canvas = Canvas(top, :background => "#282c34", :cursor => :target)
 Canvas(".top1.cnv1")
@@ -117,16 +112,16 @@ Canvas(".top1.cnv1")
 julia> mesg = Message(top, :aspect => 600)
 Message(".top1.msg1")
 
-julia> TclTk.pack(Nothing, canvas, :side => :top, :fill => "both", :expand => true)
+julia> tk_pack(Nothing, canvas, :side => :top, :fill => "both", :expand => true)
 
-julia> TclTk.pack(Nothing, mesg, :side => :bottom, :fill => "x", :expand => false)
+julia> tk_pack(Nothing, mesg, :side => :bottom, :fill => "x", :expand => false)
 
-julia> function on_click(interp::TclInterp, args::TclObj)
-           # Extract arguments (4 are expected, the 1st one is the name of the calling command
-           # which do not need here).
-           win = Canvas(interp, args[2])  # the widget, %W in the bind script
-           xm = args[3 => Float64] # the x coordinate of the event, %x in the bind script
-           ym = args[4 => Float64] # the y coordinate of the event, %y in the bind script
+julia> function on_click(args::TclObj)
+           # Fetch arguments: the 1st one is the name of the calling command (which do not
+           # need here), 2nd one is the widget (%W in the bind script), the 3rd one is the
+           # x coordinate of the event (%x in the bind script), and the 4th one is the y
+           # coordinate of the event (%y in the bind script).
+           win, xm, ym = fetch(Tuple{Canvas,Float64,Float64}, args, 2:4)
            # Convert (xm,ym) to canvas coordinates.
            x = win.canvasx(Float64, xm)
            y = win.canvasy(Float64, ym)
@@ -136,10 +131,10 @@ julia> function on_click(interp::TclInterp, args::TclObj)
        end
 on_click (generic function with 1 method)
 
-julia> cb = TclTk.Callback(on_click)
-TclTk.Callback: `on_click` (in Julia) => "::jl_func_1" (in Tcl)
+julia> cb = TclCallback(on_click)
+TclCallback: `on_click` (in Julia) => "::jl_func_1" (in Tcl)
 
-julia> TclTk.exec(Nothing, :bind, canvas, "<ButtonPress-1>", (cb.name, "%W", "%x", "%y"))
+julia> tcl_exec(:bind, canvas, "<ButtonPress-1>", (cb.name, "%W", "%x", "%y"))
 
 ```
 

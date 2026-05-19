@@ -79,7 +79,7 @@ mutable struct TclObj <: WrappedObject
     end
 end
 
-# `Callback` must be mutable to have a stable address given by `pointer_from_objref`.
+# `TclCallback` must be mutable to have a stable address given by `pointer_from_objref`.
 mutable struct TclCallback{F<:Function}
     token::CoreDefs.Tcl_Command
     func::F

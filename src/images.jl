@@ -46,8 +46,6 @@ img.name     # the image name in its interpreter
 
 [`TkBitmap`](@ref) and [`TkPhoto`](@ref) are aliases for specific image types.
 
-[`tk_start`](@ref), and [`TclInterp`](@ref).
-
 """
 function TkImage{type}(pairs::Pair...; kwds...) where {type}
     # Create a new image of a given type and automatically named.

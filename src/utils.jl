@@ -53,7 +53,6 @@ end
 #-------------------------------------------------------------------------------- Pointers -
 
 Base.pointer(obj::TclObj) = getfield(obj, :ptr)
-Base.pointer(interp::TclInterp) = getfield(interp, :ptr)
 
 # The string representation of a Tcl object is owned by Tcl's value manager, so getting a C
 # string pointer from this string is always safe unless object pointer is null.
@@ -62,7 +61,6 @@ Base.unsafe_convert(::Type{Cstring}, obj::TclObj) =
 Base.unsafe_convert(::Type{Cstring}, objptr::ObjPtr) =
     isnull(objptr) ? unexpected_null(objptr) : Cstring(Tcl_GetString(objptr))
 Base.unsafe_convert(::Type{ObjPtr}, obj::TclObj) = checked_pointer(obj)
-Base.unsafe_convert(::Type{InterpPtr}, interp::TclInterp) = checked_pointer(interp)
 Base.cconvert(::Type{Cstring}, obj::TclObj) = obj
 Base.cconvert(::Type{Cstring}, objptr::ObjPtr) = objptr
 
@@ -72,26 +70,6 @@ function checked_pointer(obj::TclObj)
     isnull(ptr) && unexpected_null(ptr)
     return ptr
 end
-
-# For a Tcl interpreter, a valid pointer is non-null and the interpreter must also live in
-# the same thread as the caller.
-function checked_pointer(interp::TclInterp)
-    ptr = pointer(interp)
-    isnull(ptr) && unexpected_null(ptr)
-    same_thread(interp) || thread_mismatch()
-    return ptr
-end
-
-# For an optional Tcl interpreter, a valid pointer may be null, otherwise the interpreter
-# must live in the same thread as the caller.
-function null_or_checked_pointer(interp::TclInterp)
-    ptr = pointer(interp)
-    isnull(ptr) || same_thread(interp) || thread_mismatch()
-    return ptr
-end
-
-same_thread(interp::TclInterp) =
-    getfield(interp, :threadid) == Threads.threadid()
 
 @noinline thread_mismatch() = throw(AssertionError(
     "attempt to use a Tcl interpreter in a different thread"))
@@ -125,7 +103,7 @@ null(::Type{Cstring}) = Cstring(C_NULL)
 
 @noinline unexpected_null(str::AbstractString) = assertion_error("unexpected null ", str)
 @noinline unexpected_null(x::Any) = unexpected_null(typeof(x))
-@noinline unexpected_null(::Type{<:Union{TclInterp,InterpPtr}}) =
+@noinline unexpected_null(::Type{InterpPtr}) =
     unexpected_null("Tcl interpreter")
 @noinline unexpected_null(::Type{<:Union{TclObj,ObjPtr}}) =
     unexpected_null("Tcl object")
@@ -158,7 +136,7 @@ SubCommand{C}(caller::W) where {C,W} = SubCommand{C,W}(caller)
 #---------------------------------------------------------------------------- Quote string -
 
 """
-    TclTk.quote_string(str)
+    tcl_quote_string(str)
 
 Return string `str` a valid Tcl string surrounded by double quotes that can be directly
 inserted in Tcl scripts.
@@ -167,7 +145,7 @@ This is similar to `escape_string` but specialized to represent a valid Tcl stri
 surrounded by double quotes in a script.
 
 """
-function quote_string(str::AbstractString)
+function tcl_quote_string(str::AbstractString)
     esc = ('"', '{', '}')
     io = IOBuffer()
     print(io, '"')
@@ -250,36 +228,19 @@ Base.showerror(io::IO, ex::TclError) = print(io, "Tcl/Tk error: ", ex.msg)
 
 """
     TclError(args...)
-    TclError(interp::TclInterp)
 
-Return a `TclError` exception with error message given by `string(args...)` or taken from
-the last result in interpreter `interp`.
+Return a `TclError` exception with error message given by `string(args...)`.
 
 """
 @noinline TclError(arg, args...) = TclError(string(arg, args...))
-@noinline function TclError(interp::TclInterp)
-    local mesg::String
-    GC.@preserve interp begin
-        interp_ptr = null_or_checked_pointer(interp)
-        if isnull(interp_ptr)
-            mesg = "no error message (null interpreter)"
-        else
-            mesg = unsafe_string(Tcl_GetStringResult(interp_ptr))
-            isempty(mesg) && (mesg = "no error message (empty interpreter result)")
-        end
-    end
-    return TclError(mesg)
-end
 
 """
     tcl_error(args...)
-    tcl_error(interp::TclInterp)
 
-Throw a `TclError` exception with error message given by `string(args...)` or taken from the
-last result in interpreter `interp`.
+Throw a `TclError` exception with error message given by `string(args...)`.
 
 """
-@noinline tcl_error(args...) = throw(TclError(args...))
+tcl_error(args...) = throw(TclError(args...))
 
 """
     TclTk.Impl.get_error_message(ex)
@@ -308,8 +269,7 @@ Throw a Tcl error with a message stored in the result of `interp`.
     call.
 
 """
-@noinline unsafe_error(interp::Union{TclInterp,InterpPtr}) =
-    tcl_error(unsafe_result(String, interp))
+@noinline unsafe_error(interp::InterpPtr) = tcl_error(unsafe_result(String, interp))
 
 """
     TclTk.Impl.unsafe_error(interp, mesg)
@@ -326,11 +286,8 @@ non-null Tcl interpreter with a non-empty result; otherwise, the error message i
 [`TclTk.Impl.unsafe_convert`](@ref) and [`TclTk.Impl.unsafe_result`](@ref).
 
 """
-@noinline unsafe_error(interp::Union{TclInterp,InterpPtr}, mesg::AbstractString) =
+@noinline unsafe_error(interp::InterpPtr, mesg::AbstractString) =
     tcl_error(unsafe_error_message(interp, mesg))
-
-unsafe_error_message(interp::TclInterp, mesg::AbstractString) =
-    unsafe_error_message(pointer(interp), mesg)
 
 function unsafe_error_message(interp::InterpPtr, mesg::AbstractString)
     if !isnull(interp)

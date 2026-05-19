@@ -7,6 +7,19 @@ module Impl
 
 import ..TclTk
 
+import ..TclTk:
+    tcl_concat,
+    tcl_eval,
+    tcl_exec,
+    tcl_getvar,
+    tcl_library,
+    tcl_list,
+    tcl_quote_string,
+    tcl_setvar,
+    tcl_unsetvar,
+    tcl_exists,
+    tcl_version
+
 using Tcl_jll, Tk_jll
 using CEnum
 using ColorTypes
@@ -29,17 +42,17 @@ include("types.jl")
 include("utils.jl")
 include("objects.jl")
 include("lists.jl")
-include("interpreters.jl")
-include("variables.jl")
-include("callbacks.jl")
-include("events.jl")
-include("colors.jl")
-include("widgets.jl")
-include("dialogs.jl")
-include("images.jl")
-include("wm.jl")
+include("interp.jl")
+#include("variables.jl")
+#include("callbacks.jl")
+#include("events.jl")
+#include("colors.jl")
+#include("widgets.jl")
+#include("dialogs.jl")
+#include("images.jl")
+#include("wm.jl")
 
-@deprecate getinterp(args...; kwds...) TclInterp(args...; kwds...) false
+#FIXME @deprecate getinterp(args...; kwds...) TclInterp(args...; kwds...) false
 
 @deprecate setvar(args...; kwds...) setvar!(args...; kwds...) false
 @deprecate unsetvar(args...; kwds...) unsetvar!(args...; kwds...) false

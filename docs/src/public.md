@@ -11,15 +11,9 @@ tcl_list
 ## Interpreters
 
 ```@docs
-TclInterp
-TclTk.eval
-TclTk.exec
-TclTk.getresult
-TclTk.setresult!
-TclTk.quote_string
-TclTk.isactive
-TclTk.isdeleted
-TclTk.issafe
+tcl_eval
+tcl_exec
+tcl_quote_string
 ```
 
 ## Status and exceptions

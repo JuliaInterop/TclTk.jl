@@ -1,7 +1,7 @@
 #
 # types.jl -
 #
-# Definitions of Tcl constants and types.
+# Definitions of types and constants for Tcl/Tk.
 #
 
 const InterpPtr = Ptr{Tcl_Interp}
@@ -17,20 +17,6 @@ end
 # Simple decorator to indicate a verified argument.
 struct Verified{T}
     value::T
-end
-
-# Structure to store a pointer to a Tcl interpreter. (Even though the address should not be
-# modified, it is mutable because immutable objects cannot be finalized.)
-mutable struct TclInterp
-    ptr::InterpPtr
-    threadid::Int
-    tkstarted::Bool
-    global _TclInterp # private inner constructor
-    function _TclInterp(ptr::InterpPtr)
-        isnull(ptr) || Tcl_Preserve(ptr)
-        interp = new(ptr, Threads.threadid(), false)
-        return finalizer(finalize, interp)
-    end
 end
 
 """
@@ -79,13 +65,11 @@ end
 
 # `Callback` must be mutable to have a stable address given by `pointer_from_objref`.
 mutable struct Callback{F<:Function}
-    interp::TclInterp
     token::Tcl_Command
     func::F
 end
 
 struct Variable{T}
-    interp::TclInterp
     name::TclObj
 end
 
@@ -165,11 +149,10 @@ abstract type TkWidget <: TkObject      end
 
 # An image is parameterized by the symbolic image type.
 struct TkImage{T} <: TkObject
-    interp::TclInterp
     name::TclObj
-    function TkImage{T}(interp::TclInterp, name::Verified{TclObj}) where {T}
+    function TkImage{T}(name::Verified{TclObj}) where {T}
         T isa Symbol || argument_error("image type must be a symbol")
-        return new{T}(interp, name.value)
+        return new{T}(name.value)
     end
 end
 
@@ -189,7 +172,7 @@ const TkBitmap = TkImage{:bitmap}
 Return a Tk *photo* image. See [`TkImage`](@ref) for more information.
 
 """
-const TkPhoto  = TkImage{:photo}
+const TkPhoto = TkImage{:photo}
 
 # Alias for specifying an index range in an image/array view.
 const ViewRange{T<:Integer} = Union{Colon,AbstractUnitRange{<:T}}

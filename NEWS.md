@@ -8,6 +8,14 @@ Versioning](https://semver.org).
 
 ### Breaking changes
 
+- Since a Tcl interpreter can only be used in the thread where it lives and since, for
+  common usage, there is no point in having multiple interpreters, there is now a single
+  interpreter shared by all tasks. In the public API, the Tcl interpreter is never
+  explicitly specified. When Tcl code is to be evaluated, the calling thread communicates
+  with the sticky task which manages the interpreter to have the code evaluated. A similar
+  solution is implemented by [Julia Tk package](http://github.com/JuliaGraphics/Tk.jl). See
+  [this link](https://github.com/JuliaInterop/TclTk.jl/issues/9) for a discussion.
+
 - Widget types are no longer prefixed by `Tk` of `Ttk`. For example, use `Canvas` instead of
   `TkCanvas`. When a type of widget exists in the two packages, the themed one is preferred
   (formerly prefixed with `Ttk`). If another type is preferred, it can still be prefixed by

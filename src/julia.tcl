@@ -12,7 +12,28 @@ namespace eval ::_jl {
         }
     }
 
-    proc config_or_create_image {type name args} {
+    # Image accessors. These save passing two arguments.
+    proc image_delete name {
+        ::image delete $name
+    }
+    proc image_inuse name {
+        ::image inuse $name
+    }
+    proc image_width name {
+        ::image width $name
+    }
+    proc image_height name {
+        ::image width $name
+    }
+    proc image_type name {
+        ::image type $name
+    }
+    proc image_size name {
+        # This procedure saves calling the interpreter twice.
+        list [::image width $name] [::image height $name]
+    }
+
+    proc image_create_or_config {type name args} {
         if {[catch {image type $name} value]} {
             # No image with that name already exists: create a new image.
             eval [list image create $type $name] $args

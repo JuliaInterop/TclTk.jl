@@ -97,10 +97,12 @@ abstract type TkWidget <: TkObject      end
 # An image is parameterized by the symbolic image type.
 struct TkImage{T} <: TkObject
     name::TclObj
+    handle::Ptr{Cvoid} # used to store the handle of a Tk photo
     global _TkImage
-    function _TkImage(::Val{T}, name::TclObj) where {T}
+    function _TkImage(::Val{T}, name::TclObj, handle::Ptr = C_NULL) where {T}
         T isa Symbol || argument_error("image type must be a symbol")
-        return new{T}(name)
+        T === :photo && Core.isnull(handle) && (handle = Core.unsafe_find_photo(name))
+        return new{T}(name, handle)
     end
 end
 

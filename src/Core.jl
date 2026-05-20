@@ -19,7 +19,9 @@ import ..TclTk:
     TclCallback,
     TclObj,
     TclVariable,
+    TkBitmap,
     TkImage,
+    TkPhoto,
     TkWidget,
 
     # Tcl methods.
@@ -120,7 +122,7 @@ include("variables.jl")
 include("callbacks.jl")
 include("colors.jl")
 include("widgets.jl")
-#include("images.jl")
+include("images.jl")
 #include("wm.jl")
 
 function __init__()

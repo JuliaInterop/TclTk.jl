@@ -83,6 +83,7 @@ function Tk_FindPhoto(interp, name)
     @ccall libtk.Tk_FindPhoto(interp::Ptr{Tcl_Interp}, name::Cstring)::Tk_PhotoHandle
 end
 
+# NOTE: Tcl interpreter is only used for error reporting.
 function Tk_PhotoPutBlock(interp, handle, block, x, y, width, height, compRule)
     @ccall libtk.Tk_PhotoPutBlock(interp::Ptr{Tcl_Interp}, handle::Tk_PhotoHandle,
                                   block::Ptr{Tk_PhotoImageBlock}, x::Cint, y::Cint,
@@ -108,6 +109,7 @@ function Tk_PhotoBlank(handle)
     @ccall libtk.Tk_PhotoBlank(handle::Tk_PhotoHandle)::Cvoid
 end
 
+# NOTE: Tcl interpreter is only used for error reporting.
 function Tk_PhotoExpand(interp, handle, width, height)
     @ccall libtk.Tk_PhotoExpand(interp::Ptr{Tcl_Interp}, handle::Tk_PhotoHandle,
                                 width::Cint, height::Cint)::TclStatus
@@ -118,6 +120,7 @@ function Tk_PhotoGetSize(handle, width, height)
                                  width::Ptr{Cint}, height::Ptr{Cint})::Cvoid
 end
 
+# NOTE: Tcl interpreter is only used for error reporting.
 function Tk_PhotoSetSize(interp, handle, width, height)
     @ccall libtk.Tk_PhotoSetSize(interp::Ptr{Tcl_Interp}, handle::Tk_PhotoHandle,
                                  width::Cint, height::Cint)::TclStatus

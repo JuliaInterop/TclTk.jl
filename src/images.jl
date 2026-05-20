@@ -2,7 +2,10 @@
 # images.jl -
 #
 # Manipulation of Tk images.
-#
+
+
+# TODO Attach a callback to the image so that its handle is cleared when the image is
+#      destroyed.
 
 # Union of colorants that can be directly handled by a `TkPhoto`.
 const PhotoColorant = Union{Gray{N0f8},GrayA{N0f8},AGray{N0f8},
@@ -39,7 +42,8 @@ size(img, 2) # idem
 img.size     # (width, height)
 size(img)    # idem
 img.type     # the symbolic type of the image (`:bitmap`, `:photo`, etc.)
-img.name     # the image name in its interpreter
+img.name     # the image name
+img.handle   # the image handle
 ```
 
 # See also
@@ -58,22 +62,21 @@ function TkImage{type}(name::Name, pairs::Pair...; kwds...) where {type}
     # Create a new image of a given type and name. If an image of the same name already
     # exists, it is re-wrapped.
     type isa Symbol || argument_error("image type must be a symbol")
-    name = tcl_exec(TclObj, "::_jl::config_or_create_image", type, name, pairs...; kwds...)
+    name = tcl_exec(TclObj, "::_jl::image_create_or_config", type, name, pairs...; kwds...)
     return _TkImage(Val(type), name)
 end
 
 """
     TkImage(name, pairs...; kwds...) -> img
 
-Return an instance of `TkImage` managing Tk image named `name` in the Tcl interpreter
-specified by `host` (can be a Tk widget) and after applying any options specified by
-`pairs...` and `kwds...`.
+Return an instance of `TkImage` managing Tk image named `name` and after applying any
+options specified by `pairs...` and `kwds...`.
 
 """
 TkImage(name::Name, pairs::Pair...; kwds...) = TkImage(TclObj(name), pairs...; kwds...)
 function TkImage(name::TclObj, pairs::Pair...; kwds...)
     type = tcl_exec(Symbol, :image, :type, name)
-    (isempty(pairs) && isempty(kwds)) || interp(name, :configure, pairs...; kwds...)
+    (isempty(pairs) && isempty(kwds)) || tcl_exec(Nothing, name, :configure, pairs...; kwds...)
     return _TkImage(Val(type), name)
 end
 
@@ -132,43 +135,169 @@ end
 (img::TkImage)(args...; kwds...) = tcl_exec(img, args...; kwds...)
 (img::TkImage)(::Type{T}, args...; kwds...) where {T} = tcl_exec(T, img, args...; kwds...)
 
-#-------------------------------------------------------------------------- Image commands -
-
-# Reproduce Tk `image command ...`.
-for (prop, T) in (:delete => :Nothing,
-                  :height => :Int,
-                  :inuse  => :Bool,
-                  :type   => :TclObj,
-                  :width  => :Int,
-                  )
-    func = Symbol("image_", prop)
-    @eval begin
-        $func(img::TkImage) = tcl_exec($T, :image, $(QuoteNode(prop)), img)
-    end
-end
-
-# Optimized accessors for Tk photo images.
-image_width(img::TkPhoto) = size(img, 1)
-image_height(img::TkPhoto) = size(img, 2)
-
 #------------------------------------------------------------------------ Image properties -
 
-Base.propertynames(img::TkImage) = (:height, :interp, :inuse, :name, :size, :type, :width,)
+Base.propertynames(img::TkImage) = (:handle, :height, :inuse, :name, :size, :type, :width,)
 
 @inline Base.getproperty(img::TkImage, key::Symbol) = _getproperty(img, Val(key))
+_getproperty(img::TkImage, ::Val{:handle}) = getfield(img, :handle)
 _getproperty(img::TkImage, ::Val{:height}) = image_height(img)
-_getproperty(img::TkImage, ::Val{:interp}) = getfield(img, :interp)
 _getproperty(img::TkImage, ::Val{:inuse}) = image_inuse(img)
 _getproperty(img::TkImage, ::Val{:name}) = getfield(img, :name)
 _getproperty(img::TkImage, ::Val{:size}) = size(img)
 _getproperty(img::TkImage{T}, ::Val{:type}) where {T} = T
 _getproperty(img::TkImage, ::Val{:width}) = image_width(img)
 
+# Reproduce Tk `image command ...`.
+for (prop, T) in (:delete => :Nothing,
+                  :height => :Int,
+                  :inuse  => :Bool,
+                  :size   => :(Tuple{Int,Int}),
+                  :type   => :TclObj,
+                  :width  => :Int,
+                  )
+    jl_func = Symbol("image_", prop)
+    tcl_proc = "::_jl::image_" * String(prop)
+    @eval begin
+        $jl_func(img::TkImage) = tcl_exec($T, $tcl_proc, img)
+    end
+end
+
+# Optimized accessors for Tk photo images.
+for (func, expr) in (:image_width => :(Int(width)::Int),
+                     :image_height => :(Int(height)::Int),
+                     :image_size => :((Int(width)::Int, Int(height)::Int)))
+    @eval function $func(img::TkPhoto)
+        width, height = GC.@preserve img unsafe_get_photo_size(img)
+        return $expr
+    end
+end
+
+#-------------------------------------------------------------------- Photo core functions -
+
+unsafe_find_photo(img::TkPhoto) = unsafe_find_photo(img.name)
+unsafe_find_photo(img::Name) = unsafe_find_photo(convert(String, name)::String)
+function unsafe_find_photo(name::FastString)
+    handle = GC.@preserve name begin
+        with_interpreter() do interp
+            @ccall libtk.Tk_FindPhoto(interp::Ptr{Tcl_Interp}, name::Cstring)::Ptr{Cvoid}
+        end
+    end
+    isnull(handle) && TclError("invalid image name")
+    return handle
+end
+
+function unsafe_get_photo_size(img::TkPhoto)
+    # Here the handle can be NULL.
+    return unsafe_get_photo_size(unchecked_photo_handle(img))
+end
+function unsafe_get_photo_size(handle::Tk_PhotoHandle)
+    width = Ref{Cint}(𝟘)
+    height = Ref{Cint}(𝟘)
+    isnull(handle) || Tk_PhotoGetSize(handle, width, height)
+    return (width[], height[])
+end
+
+# Return Tk photo handle, may be NULL.
+function unchecked_photo_handle(img::TkPhoto)
+    return Tk_PhotoHandle(getfield(img, :handle))::Tk_PhotoHandle
+end
+
+# Return non-NULL Tk photo handle.
+function checked_photo_handle(img::TkPhoto)
+    handle = unchecked_photo_handle(img)
+    isnull(handle) && TclError("invalid NULL Tk photo handle")
+    return handle
+end
+
+Base.unsafe_convert(::Tk_PhotoHandle, img::TkPhoto) = checked_photo_handle(img)
+
+# Resize Tk photo image. If image must be resized, its content is not preserved.
+Base.resize!(img::TkPhoto, (width, height)::Tuple{Integer,Integer}) =
+    resize!(img, width, height)
+
+function Base.resize!(img::TkPhoto, width::Integer, height::Integer)
+    width ≥ 𝟘 || argument_error("width must be nonnegative, got $width")
+    width ≤ typemax(Cint) || argument_error("width is too large, got $width")
+    height ≥ 𝟘 || argument_error("height must be nonnegative, got $height")
+    height ≤ typemax(Cint) || argument_error("height is too large, got $height")
+    GC.@preserve img begin
+        handle = checked_photo_handle(img)
+        current_width, current_height = unsafe_get_photo_size(handle)
+        if width != current_width || height != current_height
+            # Not clear (from Tcl/Tk doc.) why the following should be done and I had to
+            # dive into the source code TkImgPhoto.c to figure out how to actually resize
+            # the image (just calling Tk_PhotoSetSize with the correct size yields
+            # segmentation fault).
+            status = Tk_PhotoSetSize(C_NULL, handle, zero(Cint), zero(Cint))
+            status == TCL_OK || TclError("cannot set Tk photo size")
+            status = Tk_PhotoExpand(C_NULL, handle, width, height)
+            status == TCL_OK || TclError("cannot expand Tk photo")
+        end
+    end
+    return img
+end
+
+unsafe_photo_get_image(img::TkPhoto) = unsafe_photo_get_image(unchecked_photo_handle(img))
+function unsafe_photo_get_image(handle::Tk_PhotoHandle)
+    isnull(handle) && return Tk_PhotoImageBlock(
+        pointer=C_NULL, width=0, height=0, pitch=0, step=0, offset=(0,0,0,0))
+    block = Ref{Tk_PhotoImageBlock}()
+    Tk_PhotoGetImage(handle, block)
+    return block[]
+end
+
+# Unsafe: pointer and ROI must be valid.
+function unsafe_store_pixels!(img::TkPhoto, ptr::Ptr{C},
+                              x::Integer, y::Integer, width::Integer, height::Integer,
+                              comprule::Integer) where {C<:PhotoColorant}
+    unsafe_store_pixels!(unchecked_photo_handle(img), ptr, x, y, width, height, comprule)
+end
+
+function unsafe_store_pixels!(handle::Tk_PhotoHandle, ptr::Ptr{C},
+                              x::Integer, y::Integer, width::Integer, height::Integer,
+                              comprule::Integer) where {C<:PhotoColorant}
+    isnull(handle) && TclError("invalid NULL Tk photo handle")
+    block = Tk_PhotoImageBlock(
+        pointer = ptr, width = width, height = height,
+        pitch = sizeof(C)*width, step = sizeof(C), offset = offset_from_pixel_type(C))
+    # In `Tk_PhotoPutBlock`, interpreter is only needed for error reporting and can be null.
+    status = Tk_PhotoPutBlock(C_NULL, handle, Ref(block), x, y, width, height, comprule)
+    status == TCL_OK || Tcl_Error("cannot put image block in Tk photo image")
+    return nothing
+end
+
+function unsafe_photo_put_block(img::TkPhoto,
+                                block::Tk_PhotoImageBlock,
+                                x::Integer, y::Integer, width::Integer,
+                                height::Integer, comprule::Integer)
+    handle = checked_photo_handle(img)
+    status = Tk_PhotoPutBlock(C_NULL, handle, Ref(block), x, y, width, height, comprule)
+    status == TCL_OK || TclError("cannot put image block in Tk photo image")
+    return nothing
+end
+
+function unsafe_photo_put_zoomed_block(img::TkPhoto,
+                                       block::Tk_PhotoImageBlock,
+                                       x::Integer, y::Integer,
+                                       width::Integer, height::Integer,
+                                       zoomx::Integer, zoomy::Integer,
+                                       subsamplex::Integer, subsampley::Integer,
+                                       comprule::Integer)
+    handle = checked_photo_handle(img)
+    status = Tk_PhotoPutZoomedBlock(C_NULL, handle, ref(block), x, y, width, height,
+                                    zoomx, zoomy, subsamplex, subsampley, comprule)
+    status == TCL_OK || TclError("cannot put zoomed image block in Tk photo image")
+    return nothing
+end
+
 #--------------------------------------------------------------------- Image configuration -
 
 # Image configurable options are available by indexing the image with the option name
 # without the leading hyphen and specified as a string or as a symbol.
 
+# Known image options are stored in a vector (faster than a dictionary considered the small
+# number of image types).
 const image_options = Pair{Symbol,Vector{String}}[]
 
 function get_options(img::TkImage{type}) where {type}
@@ -176,7 +305,7 @@ function get_options(img::TkImage{type}) where {type}
     for (key,opts) in image_options
         key === type && return opts
     end
-    opts = String[stripfirst(spec[1 => String]) for spec in img.configure()]
+    opts = String[stripfirst(fetch(String, spec, 1)) for spec in img.configure()]
     push!(image_options, type => opts)
     return opts
 end
@@ -210,16 +339,10 @@ Base.IteratorSize(::Type{<:TkImage}) = Base.HasShape{2}()
 
 Base.length(img::TkImage) = prod(size(img))
 
-Base.size(img::TkPhoto) = get_photo_size(img)
-function Base.size(img::TkPhoto, i::Integer)
-    i < 𝟙 && throw(BoundsError("out of bounds dimension index"))
-    return (i ≤ 2 ? size(img)[i] : 1)
-end
-
-Base.size(img::TkImage) = (img.width, img.height)
+Base.size(img::TkImage) = image_size(img)
 Base.size(img::TkImage, i::Integer) =
-    i == 1 ? img.width  :
-    i == 2 ? img.height  :
+    i == 1 ? image_width(img) :
+    i == 2 ? image_height(img) :
     i ≥ 3 ? 1 : throw(BoundsError("out of bounds dimension index"))
 
 function Base.getindex(img::TkPhoto, ::Colon, ::Colon)
@@ -320,52 +443,6 @@ function Base.setindex!(img::TkPhoto, A::AbstractMatrix{<:Colorant},
                              length(xroi), length(yroi), TK_PHOTO_COMPOSITE_SET)
     end
     return img
-end
-
-#------------------------------------------------------------------------------ Image size -
-
-# Resize Tk photo image. If image must be resized, its contents is not preserved.
-Base.resize!(img::TkPhoto, (width, height)::Tuple{Integer,Integer}) =
-    resize!(img, width, height)
-
-function Base.resize!(img::TkPhoto, width::Integer, height::Integer)
-    photo_resize!(img, width, height)
-    return img
-end
-
-function get_photo_size(img::TkPhoto)
-    GC.@preserve img begin
-        width, height = unsafe_get_photo_size(img)
-        return (Int(width)::Int, Int(height)::Int)
-    end
-end
-
-function get_photo_size(interp::TclInterp, name::Name)
-    GC.@preserve interp name begin
-        width, height = unsafe_get_photo_size(unsafe_find_photo(interp, name))
-        return (Int(width)::Int, Int(height)::Int)
-    end
-end
-
-function photo_resize!(img::TkPhoto, width::Integer, height::Integer)
-    width ≥ 𝟘 || argument_error("width must be nonnegative, got $width")
-    height ≥ 𝟘 || argument_error("height must be nonnegative, got $height")
-    GC.@preserve img begin
-        interp = checked_pointer(img.interp)
-        handle = unsafe_find_photo(interp, img.name)
-        old_width, old_height = unsafe_get_photo_size(handle)
-        if width != old_width || height != old_height
-            # Not clear (from Tcl/Tk doc.) why the following should be done and I had to
-            # dive into the source code TkImgPhoto.c to figure out how to actually resize
-            # the image (just calling Tk_PhotoSetSize with the correct size yields
-            # segmentation fault).
-            status = Tk_PhotoSetSize(interp, handle, zero(Cint), zero(Cint))
-            status == TCL_OK || unsafe_error(interp, "cannot set Tk photo size")
-            status = Tk_PhotoExpand(interp, handle, width, height)
-            status == TCL_OK || unsafe_error(interp, "cannot expand Tk photo size")
-        end
-    end
-    return nothing
 end
 
 #-------------------------------------------------------------------------- Pixel colorant -
@@ -804,127 +881,6 @@ function unsafe_load_pixels!(arr::AbstractVector, ptr::Ptr,
     @inbounds @simd for i in 𝟙:number
         arr[i] = unsafe_load(ptr + step*(i - 𝟙))
     end
-    return nothing
-end
-
-#---------------------------------------------------------------------------- Store pixels -
-
-# Unsafe: pointer and ROI must be valid.
-function unsafe_store_pixels!(img::TkPhoto, ptr::Ptr{C},
-                              x::Integer, y::Integer, width::Integer, height::Integer,
-                              comprule::Integer) where {C<:PhotoColorant}
-    interp = checked_pointer(img.interp)
-    handle = unsafe_find_photo(interp, img.name)
-    unsafe_store_pixels!(interp, handle, ptr, x, y, width, height, comprule)
-end
-
-function unsafe_store_pixels!(interp::Union{TclInterp,Ptr{Tcl_Interp}},
-                              handle::Tk_PhotoHandle, ptr::Ptr{C},
-                              x::Integer, y::Integer, width::Integer, height::Integer,
-                              comprule::Integer) where {C<:PhotoColorant}
-    block = Tk_PhotoImageBlock(
-        pointer = ptr, width = width, height = height,
-        pitch = sizeof(C)*width, step = sizeof(C), offset = offset_from_pixel_type(C))
-    status = Tk_PhotoPutBlock(interp, handle, Ref(block), x, y, width, height, comprule)
-    status == TCL_OK || tcl_error(interp)
-    return nothing
-end
-
-#------------------------------------------------------------------------------ Unsafe API -
-# Unsafe: arguments must be preserved.
-
-unsafe_find_photo(img::TkPhoto) = unsafe_find_photo(img.interp, img.name)
-
-function unsafe_find_photo(interp::Ptr{Tcl_Interp}, name::Name)
-    handle = Tk_FindPhoto(interp, name)
-    isnull(handle) && TclError("invalid image name")
-    return handle
-end
-
-unsafe_get_photo_size(img::TkPhoto) = unsafe_get_photo_size(unsafe_find_photo(img))
-
-function unsafe_get_photo_size(handle::Tk_PhotoHandle)
-    width = Ref{Cint}(𝟘)
-    height = Ref{Cint}(𝟘)
-    isnull(handle) || Tk_PhotoGetSize(handle, width, height)
-    return (width[], height[])
-end
-
-set_photo_size!(interp::TclInterp, name::Name, (width, height)::NTuple{2,Integer}) =
-    set_photo_size!(interp, name, width, height)
-
-function set_photo_size!(interp::TclInterp, name::Name, width::Integer, height::Integer)
-    GC.@preserve interp begin
-        unsafe_photo_set_size!(interp, unsafe_find_photo(interp, name), Cint(width), Cint(height))
-    end
-end
-
-for (jfunc, (cfunc, mesg)) in (:unsafe_photo_set_size! => (:Tk_PhotoSetSize,
-                                                           "cannot set Tk photo size"),
-                               :unsafe_photo_expand! => (:Tk_PhotoExpamd,
-                                                         "cannot expand Tk photo"),
-                               )
-    @eval begin
-        function $jfunc(interp::TclInterp, handle::Tk_PhotoHandle,
-                        width::Integer, height::Integer)
-            # NOTE `interp` can be NULL
-            $jfunc(null_or_checked_pointer(interp), handle, width, height)
-        end
-        function $jfunc(interp::InterpPtr, handle::Tk_PhotoHandle,
-                        width::Integer, height::Integer)
-            status = $cfunc(interp, handle, width, height)
-            status == TCL_OK || unsafe_error(interp, $mesg)
-            return nothing
-        end
-    end
-end
-
-unsafe_photo_get_image(img::TkPhoto) = unsafe_photo_get_image(unsafe_find_photo(img))
-unsafe_photo_get_image(interp::Ptr{Tcl_Interp}, name::Name) =
-    unsafe_photo_get_image(unsafe_find_photo(interp, name))
-function unsafe_photo_get_image(handle::Tk_PhotoHandle)
-    block = Ref{Tk_PhotoImageBlock}()
-    Tk_PhotoGetImage(handle, block)
-    return block[]
-end
-
-function unsafe_photo_put_block(img::TkPhoto,
-                                block::Tk_PhotoImageBlock,
-                                x::Integer, y::Integer, width::Integer,
-                                height::Integer, compRule::Integer)
-    unsafe_photo_put_block(img.interp, img.name, block, x, y, width, height, compRule)
-end
-function unsafe_photo_put_block(interp::Ptr{Tcl_Interp}, name::Name,
-                                block::Tk_PhotoImageBlock,
-                                x::Integer, y::Integer, width::Integer,
-                                height::Integer, compRule::Integer)
-    handle = unsafe_find_photo(interp, name)
-    status = Tk_PhotoPutBlock(interp, handle, Ref(block), x, y, width, height, compRule)
-    status == TCL_OK || unsafe_error(interp, "cannot put block in Tk photo")
-    return nothing
-end
-
-function unsafe_photo_put_zoomed_block(img::TkPhoto,
-                                       block::Tk_PhotoImageBlock,
-                                       x::Integer, y::Integer,
-                                       width::Integer, height::Integer,
-                                       zoomX::Integer, zoomY::Integer,
-                                       subsampleX::Integer, subsampleY::Integer,
-                                       compRule::Integer)
-    unsafe_photo_put_zoomed_block(img.interp, img.name, block, x, y, width, height,
-                                  zoomX, zoomY, subsampleX, subsampleY, compRule)
-end
-function unsafe_photo_put_zoomed_block(interp::Ptr{Tcl_Interp}, name::Name,
-                                       block::Tk_PhotoImageBlock,
-                                       x::Integer, y::Integer,
-                                       width::Integer, height::Integer,
-                                       zoomX::Integer, zoomY::Integer,
-                                       subsampleX::Integer, subsampleY::Integer,
-                                       compRule::Integer)
-    handle = unsafe_find_photo(interp, name)
-    status = Tk_PhotoPutZoomedBlock(interp, handle, ref(block), x, y, width, height,
-                                    zoomX, zoomY, subsampleX, subsampleY, compRule)
-    status == TCL_OK || unsafe_error(interp, "cannot put zoomed block in Tk photo")
     return nothing
 end
 

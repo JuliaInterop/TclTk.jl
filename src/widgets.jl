@@ -36,7 +36,8 @@ macro TkWidget(structname, class, command, prefix)
             build($constructor, $class, $command, $prefix, args...; kwds...) :: $type
 
         # Make the widget callable.
-        (w::$type)(args...; kwds...) = tcl_exec(w, args...; kwds...)
+        (w::$type)(::Type{T}, args...; kwds...) where {T} = tcl_exec(T, w, args...; kwds...)
+        (w::$type)(args...; kwds...) = tcl_exec(Nothing, w, args...; kwds...)
 
         # Register widget class.
         register_widget_class($class, $constructor)
@@ -259,7 +260,6 @@ Return information `what` related to widget `w` as a value of type `T`.
 winfo(w::TkWidget, what::Name) = winfo(what, w)
 winfo(what::Name, w::TkWidget) = winfo(TclObj, what, w)
 winfo(::Type{T}, w::TkWidget, what::Name) where {T} = winfo(T, what, w)
-winfo(::Type{T}, what::Name, w::TkWidget) where {T} = winfo(T, what, w)
 
 winfo_exists(w::Union{TkWidget,Name}) = winfo(Bool, :exists, w)
 winfo_parent(w::Union{TkWidget,Name}) = winfo(String, :parent, w)
@@ -370,7 +370,6 @@ let props = Symbol[]
             @eval _getproperty(w::TkWidget, ::Val{$key}) = $(T.instance)(w)
         else
             @eval _getproperty(w::TkWidget, ::Val{$key}) = winfo($T, w, $key)
-
         end
         flag && push!(props, sym)
     end

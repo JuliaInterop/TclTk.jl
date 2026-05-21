@@ -175,18 +175,6 @@ end
 
 #-------------------------------------------------------------------- Photo core functions -
 
-unsafe_find_photo(img::TkPhoto) = unsafe_find_photo(img.name)
-unsafe_find_photo(img::Name) = unsafe_find_photo(convert(String, img)::String)
-function unsafe_find_photo(name::FastString)
-    handle = GC.@preserve name begin
-        with_interpreter() do interp
-            @ccall libtk.Tk_FindPhoto(interp::Ptr{Tcl_Interp}, name::Cstring)::Ptr{Cvoid}
-        end
-    end
-    isnull(handle) && TclError("invalid image name")
-    return handle
-end
-
 function unsafe_get_photo_size(img::TkPhoto)
     # Here the handle can be NULL.
     return unsafe_get_photo_size(unchecked_photo_handle(img))

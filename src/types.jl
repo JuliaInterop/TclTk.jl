@@ -95,13 +95,27 @@ abstract type TkObject <: WrappedObject end
 abstract type TkWidget <: TkObject      end
 
 # An image is parameterized by the symbolic image type.
+#
+# The handle of an image remains unchanged for the life of the image.
+#
+# TODO There should be a mean to preserve the image in Tk while its counterpart in Julia
+#      exists. Perhaps this can be done with Tcl_Preserve/Tcl_Release.
 struct TkImage{T} <: TkObject
     name::TclObj
-    handle::Ptr{Cvoid} # used to store the handle of a Tk photo
+    handle::Ptr{Cvoid}
     global _TkImage
-    function _TkImage(::Val{T}, name::TclObj, handle::Ptr = C_NULL) where {T}
+    function _TkImage(::Val{T}, name) where {T}
         T isa Symbol || argument_error("image type must be a symbol")
-        T === :photo && Core.isnull(handle) && (handle = Core.unsafe_find_photo(name))
+        handle = C_NULL::Ptr{Cvoid}
+        if T === :photo
+            handle = GC.@preserve name begin
+                Core.with_interpreter() do interp
+                    @ccall Core.libtk.Tk_FindPhoto(
+                        interp::Ptr{CoreDefs.Tcl_Interp}, name::Cstring)::Ptr{Cvoid}
+                end
+            end::Ptr{Cvoid}
+            handle == C_NULL && TclError("invalid Tk photo name \"$name\"")
+        end
         return new{T}(name, handle)
     end
 end

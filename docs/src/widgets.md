@@ -213,13 +213,13 @@ Non-top level widgets must be managed by a *geometry manager* to become visible.
 3 different geometry managers to organize widgets within a so-called *container* widget
 (their parent by default):
 
-* The *placer* geometry manager, via the [`tk_place`](@ref) function, provides simple fixed
+* The *placer* geometry manager, via the [`TclTk.place`](@ref) function, provides simple fixed
   placement of widgets inside their container.
 
-* The *packer* geometry manager, via the [`tk_pack`](@ref) function, packs the widgets in
+* The *packer* geometry manager, via the [`TclTk.pack`](@ref) function, packs the widgets in
   order against the edges of their container.
 
-* The *grid* geometry manager, via the [`tk_grid`](@ref) function, arranges widgets in rows
+* The *grid* geometry manager, via the [`TclTk.grid`](@ref) function, arranges widgets in rows
   and columns inside their container.
 
 These geometry managers take a variable number of arguments, one of which must be a widget
@@ -232,7 +232,7 @@ done by:
 top = Toplevel(background="darkseagreen")
 lab = Label(top, text="Some label", background="lightblue")
 btn = Button(top, text="Click me", command="puts {Hello world!}")
-tk_pack(btn, lab, side=:bottom, padx=90, pady=5)
+TclTk.pack(btn, lab, side=:bottom, padx=90, pady=5)
 top.title("Tk `pack` example")
 top.iconname("tkpackxmpl")
 ```
@@ -254,7 +254,7 @@ top = Toplevel()
 top.title("Tk example")
 lab = Label(top, text="Some label", background="lightblue")
 btn = Button(top, text="Please push me...", command="puts {Button pushed!}")
-tk_pack(lab, btn, side=:top, padx=70, pady=5)
+TclTk.pack(lab, btn, side=:top, padx=70, pady=5)
 ```
 
 This shows how `option => value` pairs can be used at widget creation to set some
@@ -266,13 +266,16 @@ Configuration options of `btn` can be queried by the `cget` sub-command as in th
 examples:
 
 ```julia-repl
+julia> TclTk.cget(btn, :text) # option name without hyphen
+TclObj("Please push me...")
+
 julia> tcl_exec(btn, :cget, "-text") # each argument is a token
 TclObj("Please push me...")
 
 julia> btn(:cget, "-text") # shortcut for the above example
 TclObj("Please push me...")
 
-julia> tk_cget(btn, :text) # option name without hyphen
+julia> btn.cget(:text) # shortcut for the above example
 TclObj("Please push me...")
 
 julia> btn[:text] # option name without hyphen
@@ -281,27 +284,22 @@ TclObj("Please push me...")
 ```
 
 As can be seen, any of these statements yields a Tcl object whose content is the value of
-the `-text` option. Which syntax is preferred is a matter of taste.
+the `-text` option. Which syntax is preferred is a matter of taste. Except in `tcl_exec`
+calls, the leading hyphen may be omitted and the option name may be symbolic.
 
 An optional Julia type may be specified to convert the value of the Tcl object:
 
 ```julia-repl
+julia> TclTk.cget(String, btn, :text) # option name without hyphen
+"Please push me..."
+
 julia> tcl_exec(String, btn, :cget, "-text") # each argument is a token
 "Please push me..."
 
 julia> btn(String, :cget, "-text") # shortcut for the above example
 "Please push me..."
 
-julia> tk_cget(String, btn, :text) # option name without hyphen
-"Please push me..."
-
-julia> btn[String, :text]
-"Please push me..."
-
-julia> btn[:text, String]
-"Please push me..."
-
-julia> btn[:text => String]
+julia> btn.cget(String, :text)
 "Please push me..."
 
 ```

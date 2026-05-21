@@ -112,9 +112,9 @@ Canvas(".top1.cnv1")
 julia> mesg = Message(top, :aspect => 600)
 Message(".top1.msg1")
 
-julia> tk_pack(Nothing, canvas, :side => :top, :fill => "both", :expand => true)
+julia> TclTk.pack(canvas, :side => :top, :fill => "both", :expand => true)
 
-julia> tk_pack(Nothing, mesg, :side => :bottom, :fill => "x", :expand => false)
+julia> TclTk.pack(mesg, :side => :bottom, :fill => "x", :expand => false)
 
 julia> function on_click(args::TclObj)
            # Fetch arguments: the 1st one is the name of the calling command (which do not

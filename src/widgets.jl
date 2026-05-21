@@ -380,19 +380,12 @@ end
 _getproperty(w::TkObject, ::Val{cmd}) where {cmd} = SubCommand{cmd}(w)
 
 # Some sub-commands are special.
-for cmd in (:cget, :configure)
+for (cmd, cls) in (:cget => TkObject, :configure => TkObject,
+                   :grid => TkWidget, :pack => TkWidget, :place => TkWidget)
     @eval begin
-        (f::SubCommand{$(QuoteNode(cmd)),<:TkObject})(::Type{T}, args...; kwds...) where T =
+        (f::SubCommand{$(QuoteNode(cmd)),<:$cls})(::Type{T}, args...; kwds...) where T =
             $cmd(T, f.caller, args...; kwds...)
-        (f::SubCommand{$(QuoteNode(cmd)),<:TkObject})(args...; kwds...) =
-            $cmd(f.caller, args...; kwds...)
-    end
-end
-for cmd in (:grid, :pack, :place)
-    @eval begin
-        (f::SubCommand{$(QuoteNode(cmd)),<:TkWidget})(::Type{T}, args...; kwds...) where T =
-            $cmd(T, f.caller, args...; kwds...)
-        (f::SubCommand{$(QuoteNode(cmd)),<:TkWidget})(args...; kwds...) =
+        (f::SubCommand{$(QuoteNode(cmd)),<:$cls})(args...; kwds...) =
             $cmd(f.caller, args...; kwds...)
     end
 end
@@ -558,14 +551,15 @@ end
 
 """
     TclTk.configure(w)
+    w.configure()
     w(:configure)
 
 Return all the options of Tk object (widget or image) `w`.
 
 ---
     TclTk.configure(w, pairs...; kwds...)
-    w(:configure, pairs...; kwds...)
     w.configure(pairs...; kwds...)
+    w(:configure, pairs...; kwds...)
 
 Change some options of widget or image `w`. Trailing `pairs...` arguments and keywords
 `kwds...` are interpreted as configuration options. Another way to change the settings is:
@@ -589,13 +583,14 @@ configure(w::TkObject, opt::Word) = configure(TclObj, w, opt)
 configure(w::TkObject, pairs...; kwds...) = configure(Nothing, w, pairs...; kwds...)
 
 """
-    TclTk.cget(w, opt)
+    TclTk.cget(T=TclObj, w, opt) -> val::T
 
-Return the value of the option `opt` for Tk object (widget or image) `w`. Option `opt` may
-be specified as a string or as a `Symbol` and shall corresponds to a Tk option name (the
-leading hyphen may be omitted). Another way to obtain an option value is:
+Return the value, converted to type `T`, of the option `opt` for Tk object (widget or image)
+`w`. Option `opt` may be specified as a string or as a `Symbol` and shall corresponds to a
+Tk option name (the leading hyphen may be omitted). Another way to obtain an option value
+is:
 
-    w[opt]
+    w[opt] -> val::TclObj
 
 # See also
 
@@ -607,23 +602,20 @@ cget(w::TkObject, ::Type{T}, opt::Word) where {T} = cget(T, w, opt)
 cget(::Type{T}, w::TkObject, opt::Word) where {T} = tcl_exec(T, w, :cget, with_hyphen(opt))
 
 Base.getindex(w::TkObject, key::Word) = cget(w, key)
-@inline Base.getindex(w::TkObject, (key,T)::Pair{<:Word,DataType}) = cget(T, w, key)
-Base.getindex(w::TkObject, ::Type{T}, key::Word) where {T} = cget(T, w, key)
-Base.getindex(w::TkObject, key::Word, ::Type{T}) where {T} = cget(T, w, key)
 function Base.setindex!(w::TkObject, val, key::Word)
     tcl_exec(Nothing, w, :configure, key => val)
     return w
 end
 
 """
-    TclTk.grid(args...)
+    TclTk.grid(T=Nothing, args...)
 
 Call Tk *grid* geometry manager. One of the arguments must be a widget (that is an instance
-of `TkWidget`).
+of `TkWidget`). Optional argument `T` is to specify the result type.
 
 To specify the grid manager options for a single widget `w`, another possible syntax is:
 
-    w.grid(args...; kwds...)
+    w.grid(T=Nothing, args...; kwds...)
 
 # See also
 
@@ -633,14 +625,14 @@ To specify the grid manager options for a single widget `w`, another possible sy
 function grid end
 
 """
-    TclTk.pack(args...; kwds...)
+    TclTk.pack(T=Nothing, args...; kwds...)
 
 Call Tk *packer* geometry manager. One of the arguments must be a widget (that is an
-instance of `TkWidget`).
+instance of `TkWidget`). Optional argument `T` is to specify the result type.
 
 To specify the packing options for a single widget `w`, another possible syntax is:
 
-    w.pack(args...; kwds...; kwds..)
+    w.pack(T=Nothing, args...; kwds...; kwds..)
 
 For example:
 
@@ -660,10 +652,10 @@ btn.pack(side=:bottom, padx=30, pady=5)
 function pack end
 
 """
-    TclTk.place(args...; kwds..)
+    TclTk.place(T=Nothing, args...; kwds..)
 
 Call Tk *placer* geometry manager. One of the arguments must be a widget (that is an
-instance of `TkWidget`).
+instance of `TkWidget`). Optional argument `T` is to specify the result type.
 
 To specify the placing options for a single widget `w`, another possible syntax is:
 
@@ -676,6 +668,7 @@ To specify the placing options for a single widget `w`, another possible syntax 
 """
 function place end
 
+# All geometry manager commands follow the same pattern.
 for cmd in (:grid, :pack, :place)
     @eval begin
         $cmd(args...; kwds...) = $cmd(Nothing, args...; kwds...)
@@ -685,8 +678,8 @@ for cmd in (:grid, :pack, :place)
     end
 end
 
-# Base.bind is overloaded because it already exists for sockets, but there
-# should be no conflicts.
+# Base.bind is overloaded because it already exists for sockets, but there should be no
+# conflicts.
 """
     bind(w, ...)
 

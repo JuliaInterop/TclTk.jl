@@ -1,5 +1,6 @@
 module TclTk
 
+# Exported public symbols.
 export
     # Tcl types.
     TclCallback,
@@ -24,7 +25,6 @@ export
 
     # Tcl methods.
     tcl_concat,
-    tcl_deletecommand,
     tcl_error,
     tcl_eval,
     tcl_evalfile,
@@ -55,6 +55,31 @@ export
 
     # Re-export from UnsetIndex.
     unset
+
+# Non-exported public symbols.
+using TypeUtils: @public
+@public(
+    # Modules.
+    Tk,
+    Ttk,
+
+    # Types.
+    NothingOr,
+    Value,
+    WideInt,
+
+    # Methods.
+    cget,
+    configure,
+    deletecommand,
+    grid,
+    pack,
+    place,
+    winfo,
+    wm
+)
+
+
 
 using CEnum
 using ColorTypes
@@ -94,36 +119,18 @@ include("Core.jl")
     Toplevel,
     Treeview
 
-#FIXME # Non-exported public symbols.
-#FIXME for sym in (
-#FIXME     # Modules.
-#FIXME     :Tk,
-#FIXME     :Ttk,
-#FIXME
-#FIXME     # Types.
-#FIXME     :NothingOr,
-#FIXME     :Value,
-#FIXME     :WideInt,
-#FIXME
-#FIXME     # Methods.
-#FIXME     :bool,
-#FIXME     :cget,
-#FIXME     :configure,
-#FIXME     :deletecommand,
-#FIXME     :grid,
-#FIXME     :pack,
-#FIXME     :place,
-#FIXME     :winfo,
-#FIXME     )
-#FIXME
-#FIXME     # Import symbols from the `Core` module and declare them as "public".
-#FIXME     if sym ∉ (:eval,)
-#FIXME         @eval import .Core: $sym
-#FIXME     end
-#FIXME     if VERSION ≥ v"1.11.0-DEV.469"
-#FIXME         @eval $(Base.Expr(:public, sym))
-#FIXME     end
-#FIXME end
+import .Core:
+    # Modules.
+    Tk,
+    Ttk,
+
+    # Types.
+    NothingOr,
+    Value,
+    WideInt,
+
+    # Methods.
+    bool
 
 # TODO @deprecate tk_messageBox(args...; kwds...) tk_messagebox(args...; kwds...) true
 # TODO @deprecate tk_getSaveFile(args...; kwds...) tk_getsavefile(args...; kwds...) true

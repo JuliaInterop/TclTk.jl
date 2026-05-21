@@ -24,9 +24,8 @@ import ..TclTk:
     TkPhoto,
     TkWidget,
 
-    # Tcl methods.
+    # Exported Tcl methods.
     tcl_concat,
-    tcl_deletecommand,
     tcl_eval,
     tcl_evalfile,
     tcl_exec,
@@ -35,7 +34,24 @@ import ..TclTk:
     tcl_library,
     tcl_list,
     tcl_setvar,
-    tcl_unsetvar
+    tcl_unsetvar,
+
+    # Exported Tk dialogs.
+    tk_chooseColor,
+    tk_chooseDirectory,
+    tk_getOpenFile,
+    tk_getSaveFile,
+    tk_messageBox,
+
+    # Non-exported public methods.
+    cget,
+    configure,
+    deletecommand,
+    grid,
+    pack,
+    place,
+    winfo,
+    wm
 
 using ..CoreDefs:
     # Constants for variables.

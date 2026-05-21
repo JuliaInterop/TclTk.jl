@@ -34,7 +34,7 @@ interpreter.
 
 # See also
 
-[`tcl_deletecommand`](@ref), [`TclTk.auto_name`](@ref), and [`TclStatus`](@ref).
+[`TclTk.deletecommand`](@ref), [`TclTk.auto_name`](@ref), and [`TclStatus`](@ref).
 
 """
 function TclCallback(func::Function, name::Name = callback_default_name())
@@ -146,13 +146,13 @@ function set_command_result(interp::InterpPtr, (status,result)::Tuple{TclStatus,
 end
 
 """
-    tcl_deletecommand(name) -> bool
+    TclTk.deletecommand(name) -> bool
 
 Delete command named `name` in shared Tcl interpreter and return whether the command existed
 before the call.
 
 """
-function tcl_deletecommand(name::Name)
+function deletecommand(name::Name)
     GC.@preserve name begin
         result = with_interpreter() do interp
             @ccall libtcl.Tcl_DeleteCommand(interp::Ptr{Tcl_Interp}, name::Cstring)::Cint
@@ -162,7 +162,7 @@ function tcl_deletecommand(name::Name)
 end
 
 """
-    tcl_deletecommand(callback::TclCallback) -> bool
+    TclTk.deletecommand(callback::TclCallback) -> bool
 
 Delete the Tcl command of `callback` from its interpreter and return whether the command
 existed before the call.
@@ -172,7 +172,7 @@ existed before the call.
 [`TclCallback`](@ref).
 
 """
-function tcl_deletecommand(callback::TclCallback)
+function deletecommand(callback::TclCallback)
     # In principle, it is not necessary to preserve `callback` from being garbage collected
     # as it should be referenced by `preserved_objects`.
     GC.@preserve callback begin

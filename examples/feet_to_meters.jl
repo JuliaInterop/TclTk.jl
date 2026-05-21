@@ -2,14 +2,14 @@
 
 using TclTk
 
-function calc_function(interp::TclInterp, args::TclObj)
-    feet = convert(Float64, interp["feet"])
+function calc_function(args::TclObj)
+    feet = tcl_getvar(Float64, "feet")
     resolution = 1e3
-    interp["meters"] = round(feet*0.3048*resolution)/resolution
+    tcl_setvar("meters", round(feet*0.3048*resolution)/resolution)
 end
 calc_callback = TclCallback(calc_function)
 
-top = Toplevel(interp)
+top = Toplevel()
 top.title("Feet to Meters")
 
 frame = Frame(top, padding=(3, 3, 12, 12))
@@ -33,11 +33,11 @@ islbl.grid(column=1, row=2, sticky="e")
 mlbl = Label(frame, text="meters")
 mlbl.grid(column=3, row=2, sticky="w")
 
-tk_grid(:columnconfigure, top, 0, weight=1)
-tk_grid(:rowconfigure, top, 0, weight=1)
-tk_grid(:columnconfigure, frame, 2, weight=1)
+TclTk.grid(:columnconfigure, top, 0, weight=1)
+TclTk.grid(:rowconfigure, top, 0, weight=1)
+TclTk.grid(:columnconfigure, frame, 2, weight=1)
 for w in frame.children
-    tk_grid(:configure, w, padx=5, pady=5)
+    TclTk.grid(:configure, w, padx=5, pady=5)
 end
 tcl_exec(:focus, feet)
 bind(top, "<Return>", calc_callback.name)

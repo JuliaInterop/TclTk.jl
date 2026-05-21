@@ -17,7 +17,7 @@ Click on an empty location to add a marker.
 Click on a marker to delete it.""", aspect=600)
 
 # Create a Tcl variable to track the number of markers.
-counter = TclVariable{Int}(interp, "::NUMBER_OF_MARKERS")
+counter = TclVariable{Int}("::NUMBER_OF_MARKERS")
 counter[] = 0
 
 # Create a label to display the number of markers.
@@ -59,7 +59,7 @@ function on_click(args::TclObj)
     y = canvas.canvasy(Float64, ym)
 
     # Current number of markers.
-    number_of_markers = Int(interp["NUMBER_OF_MARKERS"])
+    number_of_markers = counter[]
 
     # If there is any "marker" item among the "current" ones, delete the first of these; otherwise
     # add a new marker.
@@ -74,7 +74,7 @@ function on_click(args::TclObj)
 end
 
 # Create the counterpart of the callback in the Tcl interpreter.
-on_click_callback = TclCallback(on_click, interp, "on_click")
+on_click_callback = TclCallback(on_click, "on_click")
 
 # Bind event to callback.
 bind(canvas, "<ButtonPress-1>", "on_click %W %x %y")

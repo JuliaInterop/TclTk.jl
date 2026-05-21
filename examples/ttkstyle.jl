@@ -7,13 +7,13 @@
 
 w = ".ttkstyle"
 tcl_eval("catch {destroy $w}")
-top = Toplevel(interp, w)
+top = Toplevel(w)
 top.title("Simple Ttk Widgets")
 top.iconname("ttkstyle")
 
 # Label can replace Message.
 msg = Label(top, #=font=$font,=# wraplength="4i", justify=:left, padding=(5, 3),
-               text="Ttk is the new Tk themed widget set. This is a Ttk themed label, and below are three groups of Ttk widgets in Ttk labelframes. The first group are all buttons that set the current application theme when pressed. The second group contains three sets of checkbuttons, with a separator widget between the sets. Note that the \u201cEnabled\u201d button controls whether all the other themed widgets in this toplevel are in the disabled state. The third group has a collection of linked radiobuttons.")
+            text="Ttk is the new Tk themed widget set. This is a Ttk themed label, and below are three groups of Ttk widgets in Ttk labelframes. The first group are all buttons that set the current application theme when pressed. The second group contains three sets of checkbuttons, with a separator widget between the sets. Note that the \u201cEnabled\u201d button controls whether all the other themed widgets in this toplevel are in the disabled state. The third group has a collection of linked radiobuttons.")
 msg.pack(side=:top, fill=:x)
 
 ## See Code / Dismiss
@@ -39,9 +39,9 @@ function setState(rootWidget, exceptThese, value)
     ## toplevel widget
     rootToplevel = tcl_exec(String, :winfo, :toplevel, rootWidget)
     for w in tcl_exec(Vector{String}, :winfo, :children, rootWidget)
-	if tcl_exec(String, :winfo, :toplevel, w) == rootToplevel
-	    setState(w, exceptThese, value)
-	end
+        if tcl_exec(String, :winfo, :toplevel, w) == rootToplevel
+            setState(w, exceptThese, value)
+        end
     end
 end
 setState_ = TclCallback(setState, "setState")
@@ -75,5 +75,5 @@ TclTk.pack(r1, r2, r3, r4, r5, fill=:x, padx=3, pady=2)
 f = Frame(top)
 f.pack(fill="both", expand=true)
 tcl_exec(:lower, f)
-tk_grid(buttons, checks, radios, in=f, sticky="nwe", pady=2, padx=3)
-tk_grid(:columnconfigure, f, (0, 1, 2), weight=1, uniform=true)
+TclTk.grid(buttons, checks, radios, in=f, sticky="nwe", pady=2, padx=3)
+TclTk.grid(:columnconfigure, f, (0, 1, 2), weight=1, uniform=true)

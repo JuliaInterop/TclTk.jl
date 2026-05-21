@@ -71,7 +71,7 @@ function tcl_setvar end
 function tcl_unsetvar end
 
 #------------------------------------------------------------------------------- Callbacks -
-function tcl_deletecommand end
+function deletecommand end
 
 #---------------------------------------------------------------------------- Quote string -
 
@@ -144,10 +144,15 @@ tcl_error(args...) = throw(TclError(args...))
 
 #--------------------------------------------------------------------------------- Widgets -
 
-export wm
+function cget end
+function configure end
+function grid end
+function pack end
+function place end
+function winfo end
 
 """
-    wm(T=Nothing, cmd, w::TkWidget, args...; kwds...) -> res::T
+    TclTk.wm(T=Nothing, cmd, w::TkWidget, args...; kwds...) -> res::T
     wm.cmd(T, w::TkWidget, args...; kwds...) -> res::T
     wm.cmd(w::TkWidget, args...; kwds...) -> res
 
@@ -155,7 +160,15 @@ Interact with the window manager to query or control such things as the title fo
 `w`, its geometry, etc. Argument `T` is the expected type for the result. With the syntax
 `wm.cmd(w, ...)` the result has a suitable default type that depends on `cmd`.
 
-The window manger command `cmd` is one of ...
+The window manager command `cmd` is one of ...
 
 """
 function wm end
+
+#--------------------------------------------------------------------------------- Dialogs -
+
+function tk_chooseColor end
+function tk_chooseDirectory end
+function tk_getOpenFile end
+function tk_getSaveFile end
+function tk_messageBox end

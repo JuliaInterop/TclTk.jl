@@ -38,6 +38,7 @@ tcl_unsetvar
 
 ```@doc
 TclCallback
+TclTk.deletecommand
 ```
 
 ## Widgets
@@ -68,18 +69,18 @@ Spinbox
 TclTk.Text
 Toplevel
 Treeview
-tk_cget
-tk_configure
-tk_winfo
+TclTk.cget
+TclTk.configure
+TclTk.winfo
 ```
 
 ## Window and geometry managers
 
 ```@docs
-tk_grid
-tk_pack
-tk_place
-tk_wm
+TclTk.grid
+TclTk.pack
+TclTk.place
+TclTk.wm
 ```
 
 ## Images

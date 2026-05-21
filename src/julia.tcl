@@ -23,7 +23,7 @@ namespace eval ::_jl {
         ::image width $name
     }
     proc image_height name {
-        ::image width $name
+        ::image height $name
     }
     proc image_type name {
         ::image type $name

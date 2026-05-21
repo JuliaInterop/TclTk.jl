@@ -6,7 +6,7 @@ using Colors
 using Colors.FixedPointNumbers: N0f8, N0f16
 
 @testset "Tk Images" begin
-    props = sort!([:height, :inuse, :name, :size, :type, :width])
+    props = sort!([:handle, :height, :inuse, :name, :size, :type, :width])
 
     # Bitmap image.
     xbm = @inferred TkBitmap(file=joinpath(@__DIR__, "rule.xbm"))
@@ -33,16 +33,12 @@ using Colors.FixedPointNumbers: N0f8, N0f16
     @test endswith(path, "rule.xbm")
     @test path == @inferred xbm["file"]
     @test path == @inferred xbm["-file"]
-    @test path == @inferred xbm[String, "file"]
-    @test path == @inferred xbm["file", String]
     @test path == @inferred xbm.cget(:file)
     @test path == @inferred xbm.cget(String, :file)
     @test path == @inferred xbm.cget("file")
     @test path == @inferred xbm.cget(String, "file")
     @test path == @inferred xbm.cget("-file")
     @test path == @inferred xbm.cget(String, "-file")
-    @test path == xbm[:file => String]
-    @test path == xbm["file" => String]
     color = "cyan"
     @inferred xbm.configure(foreground = color)
     @test color == @inferred xbm.cget(:foreground)

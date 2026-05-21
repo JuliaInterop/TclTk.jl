@@ -398,6 +398,7 @@ Read the file given by `filename` and evaluate its contents as a Tcl script. The
 as [`tcl_eval`](@ref) is returned.
 
 """
+tcl_evalfile(filename::AbstractString) = tcl_evalfile(Nothing, filename)
 function tcl_evalfile(::Type{T}, filename::AbstractString) where {T}
     status, result = GC.@preserve filename begin
         with_interpreter() do interp

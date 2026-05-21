@@ -5,7 +5,7 @@
 #
 
 """
-    tk_messageBox(pairs...; kwds...) -> answer::String
+    tk_messagebox(pairs...; kwds...) -> answer::String
 
 Pop up a Tk message box dialog and return the name of the selected button.
 
@@ -58,27 +58,27 @@ options:
 # Examples
 
 ```julia
-answer = tk_messageBox(message="Really quit?", icon=:question, type=:yesno,
+answer = tk_messagebox(message="Really quit?", icon=:question, type=:yesno,
                        detail="Select \"Yes\" to make the application exit")
 if answer == "yes"
     quit()
 elseif answer == "no"
-    tk_messageBox(message="I know you like this application!", type=:ok)
+    tk_messagebox(message="I know you like this application!", type=:ok)
 end
 ```
 
 # See also
 
-[`tk_chooseColor`](@ref), [`tk_chooseDirectory`](@ref), [`tk_getOpenFile`](@ref), and and
-[`tk_getSaveFile`](@ref).
+[`tk_choosecolor`](@ref), [`tk_choosedirectory`](@ref), [`tk_getopenfile`](@ref),
+ and [`tk_getsavefile`](@ref).
 
 """
-function tk_messageBox(pairs::Pair...; kwds...)
-    return tcl_exec(String, "tk_messageBox", pairs...; kwds...)
+function tk_messagebox(pairs::Pair...; kwds...)
+    return tcl_exec(String, "::tk_messageBox", pairs...; kwds...)
 end
 
 """
-    tk_chooseColor(pairs...; kwds...)
+    tk_choosecolor(pairs...; kwds...)
 
 Pop up a Tk dialog box for the user to select a color and return the chosen color as an
 instance of `TkRGB{UInt8}` or `nothing` if the user cancels the dialog.
@@ -99,13 +99,13 @@ options:
 
 # See also
 
-[`tk_chooseDirectory`](@ref), [`tk_getOpenFile`](@ref), [`tk_getSaveFile`](@ref), and
-[`tk_messageBox`](@ref).
+[`tk_choosedirectory`](@ref), [`tk_getopenfile`](@ref), [`tk_getsavefile`](@ref), and
+[`tk_messagebox`](@ref).
 
 """
-function tk_chooseColor(pairs::Pair...; kwds...) :: Union{RGB{N0f8},Nothing}
+function tk_choosecolor(pairs::Pair...; kwds...) :: Union{RGB{N0f8},Nothing}
     # Evaluate command and get the result as a string.
-    color = tcl_exec(String, "tk_chooseColor", pairs...; kwds...)
+    color = tcl_exec(String, "::tk_chooseColor", pairs...; kwds...)
 
     # Convert to a color.
     isempty(color) && return nothing
@@ -117,7 +117,7 @@ function tk_chooseColor(pairs::Pair...; kwds...) :: Union{RGB{N0f8},Nothing}
 end
 
 """
-    tk_chooseDirectory(pairs...; kwds...) -> dir::String
+    tk_choosedirectory(pairs...; kwds...) -> dir::String
 
 Pop up a Tk dialog box for the user to select a directory and return the chosen directory
 name (an empty string if none).
@@ -152,19 +152,20 @@ options:
 
 # See also
 
-[`tk_chooseColor`](@ref), [`tk_getOpenFile`](@ref), [`tk_getSaveFile`](@ref), and
-[`tk_messageBox`](@ref).
+[`tk_choosecolor`](@ref), [`tk_getopenfile`](@ref), [`tk_getsavefile`](@ref), and
+[`tk_messagebox`](@ref).
 
 """
-function tk_chooseDirectory(pairs::Pair...; kwds...)
-    return tcl_exec(String, "tk_chooseDirectory", pairs...; kwds...)
+function tk_choosedirectory(pairs::Pair...; kwds...)
+    return tcl_exec(String, "::tk_chooseDirectory", pairs...; kwds...)
 end
 
 """
-    tk_getOpenFile(pairs...; kwds...)
+    tk_getopenfile(pairs...; kwds...) -> res::String
+    tk_getopenfiles(pairs...; kwds...) -> res::Vector{String}
 
-Pop up a Tk dialog box for the user to select a file to open and return the name of the
-chosen file (an empty string if none).
+Pop up a Tk dialog box for the user to select a file or multiple files to open and return
+the name of the chosen file (an empty string if none).
 
 # Options
 
@@ -189,9 +190,6 @@ options:
   the return value will convert the relative path to an absolute path.
 
 - Option `:initialfile` specifies a filename to be displayed in the dialog when it pops up.
-
-- Option `:multiple` specifies whether the user can choose multiple files from the Open
-  dialog. If multiple files are chosen, a vector of strings is returned.
 
 - Option `:defaultextension` specifies a string that will be appended to the filename if the
   user enters a filename without an extension. The default value is the empty string, which
@@ -221,12 +219,12 @@ options:
 
 # See also
 
-[`tk_getOpenFile`](@ref), [`tk_chooseColor`](@ref), [`tk_chooseDirectory`](@ref), and
-[`tk_messageBox`](@ref).
+[`tk_getsavefile`](@ref), [`tk_choosecolor`](@ref), [`tk_choosedirectory`](@ref), and
+[`tk_messagebox`](@ref).
 
 """
-function tk_getOpenFile(pairs::Pair...; kwds...) :: Union{String, Vector{String}}
-    # Determine whether multiple selection is allowed.
+function tk_getopenfile(pairs::Pair...; kwds...) :: String
+    # Multiple selection is not allowed.
     multiple = false
     for (key, val) in pairs
         if key isa Symbol
@@ -244,20 +242,22 @@ function tk_getOpenFile(pairs::Pair...; kwds...) :: Union{String, Vector{String}
         multiple = bool(val)
         break
     end
+    multiple && throw(ArgumentError(
+        "forbidden option `multiple`, call `tk_getopenfiles` for multiple selection"))
 
     # Execute command.
-    obj = tcl_exec(TclObj, "tk_getOpenFile", pairs...; kwds...)
-
-    # Return the result as a string or a vector of string.
-    if multiple
-        return convert(Vector{String}, obj)
-    else
-        return String(obj)
-    end
+    return tcl_exec(String, "tk_getOpenFile", pairs...; kwds...)
 end
 
+function tk_getopenfiles(pairs::Pair...; kwds...) :: Vector{String}
+    # Execute command and return the result as a vector of strings.
+    obj = tcl_exec(Vector{String}, "::tk_getOpenFile", pairs...; kwds..., multiple=true)
+end
+
+@doc @doc(tk_getopenfile) tk_getopenfiles
+
 """
-    tk_getSaveFile(pairs...; kwds...)
+    tk_getsavefile(pairs...; kwds...)
 
 Pop up a Tk dialog box for the user to select a file to save and return the name of the
 chosen file (an empty string if none).
@@ -269,7 +269,7 @@ options:
 
 - For options `:parent`, `:title`, `:message`, `:initialdir`, `:initialfile`,
   `:defaultextension`, `:filetypes`, `:typevariable`, and `:command`, see
-  [`tk_getSaveFile`](@ref).
+  [`tk_getsavefile`](@ref).
 
 - Option `:confirmoverwrite` configures how the Save dialog reacts when the selected file
   already exists, and saving would overwrite it. A true value requests a confirmation dialog
@@ -278,10 +278,10 @@ options:
 
 # See also
 
-[`tk_getSaveFile`](@ref), [`tk_chooseColor`](@ref), [`tk_chooseDirectory`](@ref), and
-[`tk_messageBox`](@ref).
+[`tk_getopenfile`](@ref), [`tk_choosecolor`](@ref), [`tk_choosedirectory`](@ref), and
+[`tk_messagebox`](@ref).
 
 """
-function tk_getSaveFile(pairs::Pair...; kwds...)
-    return tcl_exec(String, "tk_getSaveFile", pairs...; kwds...)
+function tk_getsavefile(pairs::Pair...; kwds...)
+    return tcl_exec(String, "::tk_getSaveFile", pairs...; kwds...)
 end

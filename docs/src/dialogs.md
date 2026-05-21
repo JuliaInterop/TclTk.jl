@@ -10,12 +10,12 @@ it may also be a vector of strings (for instance, if multiple selection is allow
 For example:
 
 ```julia
-answer = tk_messageBox(:message => "Really quit?", :icon => :question, :type => :yesno,
+answer = tk_messagebox(:message => "Really quit?", :icon => :question, :type => :yesno,
                        :detail => "Select \"Yes\" to make the application exit")
 if answer == "yes"
     quit()
 elseif answer == "no"
-    tk_messageBox(:message => "I know you like this application!", :type => :ok)
+    tk_messagebox(:message => "I know you like this application!", :type => :ok)
 end
 ```
 
@@ -26,7 +26,7 @@ others):
 
 ```julia
 using ColorTypes
-color = tk_chooseColor(:title => "Choose a nice color", :initialcolor => RGB(1.0, 0.867, 0.267))
+color = tk_choosecolor(:title => "Choose a nice color", :initialcolor => RGB(1.0, 0.867, 0.267))
 ```
 
 Which gives:
@@ -57,9 +57,9 @@ using TclTk
 The following Tk dialog widgets are available:
 
 ```@docs
-tk_chooseColor
-tk_chooseDirectory
-tk_getOpenFile
-tk_getSaveFile
-tk_messageBox
+tk_choosecolor
+tk_choosedirectory
+tk_getopenfile
+tk_getsavefile
+tk_messagebox
 ```

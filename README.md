@@ -120,7 +120,8 @@ would be very happy if, eventually, the two projects merge.
 
 ## Installation
 
-It is easy to install TclTk from the REPL of Julia's package manager<sup>[[pkg]](#pkg)</sup> as follows:
+It is easy to install TclTk from the REPL of Julia's package manager<sup>[[pkg]](#pkg)</sup>
+as follows:
 
 ```julia
 pkg> add TclTk

@@ -167,11 +167,12 @@ function wm end
 
 #--------------------------------------------------------------------------------- Dialogs -
 
-function tk_chooseColor end
-function tk_chooseDirectory end
-function tk_getOpenFile end
-function tk_getSaveFile end
-function tk_messageBox end
+function tk_choosecolor end
+function tk_choosedirectory end
+function tk_getopenfile end
+function tk_getopenfiles end
+function tk_getsavefile end
+function tk_messagebox end
 
 #---------------------------------------------------------------------------------- Images -
 

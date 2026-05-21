@@ -37,11 +37,12 @@ import ..TclTk:
     tcl_unsetvar,
 
     # Exported Tk dialogs.
-    tk_chooseColor,
-    tk_chooseDirectory,
-    tk_getOpenFile,
-    tk_getSaveFile,
-    tk_messageBox,
+    tk_choosecolor,
+    tk_choosedirectory,
+    tk_getopenfile,
+    tk_getopenfiles,
+    tk_getsavefile,
+    tk_messagebox,
 
     # Non-exported public methods.
     cget,

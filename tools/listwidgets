@@ -193,10 +193,11 @@ for {set pass 1} {$pass <= 2} {incr pass} {
   }
 }
 #
-# tk_optionMenu
+# tk_optionmenu
 # tk_dialog
-# tk_messageBox
-# tk_getOpenFile
-# tk_getSaveFile
-# tk_chooseColor
-# tk_chooseDirectory
+# tk_messagebox
+# tk_getopenfile
+# tk_getopenfiles
+# tk_getsavefile
+# tk_choosecolor
+# tk_choosedirectory

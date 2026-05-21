@@ -42,6 +42,13 @@ Versioning](https://semver.org).
 - `list[i => T]`, `list[T, i]`, and `list[i, T]` to retrieve the `i`-th item of the Tcl `list`
   converted to type `T` is now done by `fetch(T, list, i)`.
 
+- To follow Julia conventions, Tk dialog methods are in lowercase: `tk_messageBox`,
+  `tk_getOpenFile`, `tk_getSaveFile`, `tk_chooseColor`, and `tk_choosedirectory` renamed as
+  `tk_messagebox`, `tk_getopenfile`, `tk_getsavefile`, `tk_choosecolor`, and
+  `tk_choosedirectory`.
+
+- `tk_getopenfile` no longer allow for multiple selections, all `tk_getopenfiles` for that.
+
 ### Added
 
 - New `wm` function for interacting with the window manager. This function accepts

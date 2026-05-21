@@ -47,11 +47,12 @@ export
     TkWidget,
 
     # Tk dialogs.
-    tk_chooseColor,
-    tk_chooseDirectory,
-    tk_getOpenFile,
-    tk_getSaveFile,
-    tk_messageBox,
+    tk_choosecolor,
+    tk_choosedirectory,
+    tk_getopenfile,
+    tk_getopenfiles,
+    tk_getsavefile,
+    tk_messagebox,
 
     # Re-export from UnsetIndex.
     unset
@@ -133,11 +134,11 @@ import .Core:
     # Methods.
     bool
 
-# TODO @deprecate tk_messageBox(args...; kwds...) tk_messagebox(args...; kwds...) true
-# TODO @deprecate tk_getSaveFile(args...; kwds...) tk_getsavefile(args...; kwds...) true
-# TODO @deprecate tk_getOpenFile(args...; kwds...) tk_getopenfile(args...; kwds...) true
-# TODO @deprecate tk_getOpenFiles(args...; kwds...) tk_getopenfiles(args...; kwds...) true
-# TODO @deprecate tk_chooseColor(args...; kwds...) tk_choosecolor(args...; kwds...) true
-# TODO @deprecate tk_chooseDirectory(args...; kwds...) tk_choosedirectory(args...; kwds...) true
+@deprecate tk_messageBox(args...; kwds...) tk_messagebox(args...; kwds...) true
+@deprecate tk_getSaveFile(args...; kwds...) tk_getsavefile(args...; kwds...) true
+@deprecate tk_getOpenFile(args...; kwds...) tk_getopenfile(args...; kwds...) true
+@deprecate tk_getOpenFiles(args...; kwds...) tk_getopenfiles(args...; kwds...) true
+@deprecate tk_chooseColor(args...; kwds...) tk_choosecolor(args...; kwds...) true
+@deprecate tk_chooseDirectory(args...; kwds...) tk_choosedirectory(args...; kwds...) true
 
 end # module

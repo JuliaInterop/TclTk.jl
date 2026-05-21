@@ -9,7 +9,6 @@ using InteractiveUtils
 
 @testset "Tk Widgets" begin
     w = @inferred Toplevel(".")
-    @test TclTk.isrunning()
 
     # Properties and winfo fields.
     @test :atomname ∉ propertynames(w)
@@ -49,9 +48,6 @@ using InteractiveUtils
     #
     @test :id ∈ propertynames(w)
     @test w.id isa UInt
-    #
-    @test :interp ∈ propertynames(w)
-    @test w.interp isa TclInterp
     #
     @test :interps ∈ propertynames(w)
     @test w.interps isa Vector{String}
@@ -178,18 +174,17 @@ function skipfirst(s::AbstractString)
     return SubString(s, (start ≤ stop ? nextind(s, start) : start), stop)
 end
 
-destroy(w::TkWidget) = w.interp(:destroy, w)
+destroy(w::TkWidget) = tcl_exec("::destroy", w)
 
 # Retrieve widget specifications.
-interp = @inferred TclInterp()
-root = @inferred Toplevel(interp, ".")
+root = @inferred Toplevel(".")
 for child in root.children
-    interp.eval("catch {destroy $child}")
+    tcl_eval("catch {destroy $child}")
 end
 
 @testset "$T widget" for T in subtypes(TkWidget)
     w = @inferred T(root)
-    T == Toplevel && wm.withdraw(w)
+    T == Toplevel && TclTk.wm(:withdraw, w)
     config = Dict{Symbol,String}()
     alias = Dict{Symbol,String}()
     for spec in @inferred w.configure()
@@ -211,8 +206,9 @@ end
         end
     end
     commands = String[]
-    @test w.interp(TclStatus, w, "_") === TCL_ERROR
-    mesg = w.interp.result(String)
+    status, result = @inferred w(Tuple{TclStatus,TclObj}, "_")
+    @test status === TCL_ERROR
+    mesg = String(result)
     @test startswith(mesg, r"bad (option|command) \"_\": must be ")
     m = match(r"^.*? (\w+)(,? or |, |$)()", mesg)
     @test !isnothing(m)

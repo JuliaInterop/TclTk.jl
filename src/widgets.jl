@@ -243,13 +243,42 @@ function TkWidget(path::Name)
 end
 
 """
+    TclTk.wm(T=Nothing, cmd, w::TkWidget, args...; kwds...) -> res::T
+    wm.cmd(T=Nothing, w::TkWidget, args...; kwds...) -> res::T
+
+Interact with the window manager to query or control such things as the title for widget
+`w`, its geometry, etc. Argument `T` is the expected type for the result. With the syntax
+`wm.cmd(w, ...)` the result has a suitable default type that depends on `cmd`.
+
+The window manager command `cmd` is one of `aspect`, `attributes`, `client`,
+`colormapwindows`, `command`, `deiconify`, `focusmodel`, `forget`, `frame`, `geometry`,
+`grid`, `group`, `iconbitmap`, `iconify`, `iconmask`, `iconname`, `iconphoto`,
+`iconposition`, `iconwindow`, `manage`, `maxsize`, `minsize`, `overrideredirect`,
+`positionfrom`, `protocol`, `resizable`, `sizefrom`, `stackorder`, `state`, `title`,
+`transient`, or `withdraw`.
+
+"""
+wm(cmd::Word, w::TkWidget, args...; kwds...) = wm(Nothing, cmd, w, args...; kwds...)
+wm(::Type{T}, cmd::Word, w::TkWidget, args...; kwds...) where {T} =
+    tcl_exec(T, "::wm", cmd, w, args...; kwds...)
+
+# TODO Implement sub-commands for `wm` as for `winfo`.
+
+# Implement sub-commands for `wm`.
+Base.getproperty(f::typeof(wm), cmd::Symbol) = SubCommand{cmd,typeof(wm)}(f)
+(f::SubCommand{cmd,typeof(wm)})(::Type{T}, args...; kwds...) where {cmd,T} =
+    wm(T, cmd, args...; kwds...)
+(f::SubCommand{cmd,typeof(wm)})(args...; kwds...) where {cmd} =
+    wm(Nothing, cmd, args...; kwds...)
+
+"""
     TclTk.winfo(T=TclObj, what, args...) -> res::T
 
 Return information `what` related to Tk window(s) as a value of type `T`.
 
 """
-winfo(what::Name, args...) = winfo(TclObj, what, args...)
-winfo(::Type{T}, what::Name, args...) where {T} = tcl_exec(T, "::winfo", what, args...)
+winfo(what::Word, args...) = winfo(TclObj, what, args...)
+winfo(::Type{T}, what::Word, args...) where {T} = tcl_exec(T, "::winfo", what, args...)
 
 """
     TclTk.winfo(T=TclObj, w::TkWidget, what) -> res::T
@@ -257,9 +286,9 @@ winfo(::Type{T}, what::Name, args...) where {T} = tcl_exec(T, "::winfo", what, a
 Return information `what` related to widget `w` as a value of type `T`.
 
 """
-winfo(w::TkWidget, what::Name) = winfo(what, w)
-winfo(what::Name, w::TkWidget) = winfo(TclObj, what, w)
-winfo(::Type{T}, w::TkWidget, what::Name) where {T} = winfo(T, what, w)
+winfo(w::TkWidget, what::Word) = winfo(what, w)
+winfo(what::Word, w::TkWidget) = winfo(TclObj, what, w)
+winfo(::Type{T}, w::TkWidget, what::Word) where {T} = winfo(T, what, w)
 
 winfo_exists(w::Union{TkWidget,Name}) = winfo(Bool, :exists, w)
 winfo_parent(w::Union{TkWidget,Name}) = winfo(String, :parent, w)

@@ -150,19 +150,6 @@ function grid end
 function pack end
 function place end
 function winfo end
-
-"""
-    TclTk.wm(T=Nothing, cmd, w::TkWidget, args...; kwds...) -> res::T
-    wm.cmd(T, w::TkWidget, args...; kwds...) -> res::T
-    wm.cmd(w::TkWidget, args...; kwds...) -> res
-
-Interact with the window manager to query or control such things as the title for widget
-`w`, its geometry, etc. Argument `T` is the expected type for the result. With the syntax
-`wm.cmd(w, ...)` the result has a suitable default type that depends on `cmd`.
-
-The window manager command `cmd` is one of ...
-
-"""
 function wm end
 
 #--------------------------------------------------------------------------------- Dialogs -

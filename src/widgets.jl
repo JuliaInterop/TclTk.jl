@@ -397,6 +397,16 @@ for cmd in (:grid, :pack, :place)
     end
 end
 
+# Sub-commands for top-level widgets.
+for cmd in (:iconname, :title)
+    @eval begin
+        (f::SubCommand{$(QuoteNode(cmd)),Toplevel})() =
+            tcl_exec(String, "::wm", $(String(cmd)), f.caller)
+        (f::SubCommand{$(QuoteNode(cmd)),Toplevel})(str::AbstractString) =
+            tcl_exec(Nothing, "::wm", $(String(cmd)), f.caller, str)
+    end
+end
+
 # Canvas sub-commands that do not return an empty string (`nothing`).
 
 # The default for `bbox` cannot be `Tuple{4,Float64}` because there may be no matching items

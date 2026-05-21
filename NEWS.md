@@ -48,7 +48,10 @@ Versioning](https://semver.org).
   sub-commands. For example, `wm.title(w, "Window Title")` to specify the title of the top
   level window `w`.
 
-- Top-level windows have a default icon set with the logo displayed in the documentation.
+- Top-level widgets have a default icon set with the logo displayed in the documentation.
+
+- The title of a top-level widget `w` can be queried by `w.title()` and set by
+  `w.title("New Title")`.
 
 - Extend `fetch` to retrieve a Julia value or object (possibly living in a Tcl interpreter)
   from a Tcl object possibly sub-indexed. Compared to `convert(T, obj)`, `convert(T,

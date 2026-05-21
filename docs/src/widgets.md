@@ -195,6 +195,17 @@ Another possibility could be to evaluate a Tcl script as in:
 tcl_eval(String, "$btn cget -text")
 ```
 
+Top-level widgets implement the `title` and `iconname` sub-commands to query or change the
+title or the icon name of the window displayed by the window manager:
+
+```julia
+top = Toplevel()
+top.title() # yields the current title of the top-level widget
+top.title("New Title") # sets the title of the top-level widget
+top.iconname() # yields the current icon name of the top-level widget
+top.iconname("top") # sets the icon name of the top-level widget
+```
+
 
 ## Geometry managers
 
@@ -222,7 +233,8 @@ top = Toplevel(background="darkseagreen")
 lab = Label(top, text="Some label", background="lightblue")
 btn = Button(top, text="Click me", command="puts {Hello world!}")
 tk_pack(btn, lab, side=:bottom, padx=90, pady=5)
-top.title("Tk `pack` example") # FIXME
+top.title("Tk `pack` example")
+top.iconname("tkpackxmpl")
 ```
 
 which gives:

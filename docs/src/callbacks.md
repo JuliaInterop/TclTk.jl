@@ -104,7 +104,7 @@ location of mouse clicks are reported:
 julia> top = Toplevel(:background => "#282c34")
 Toplevel(".top1")
 
-julia> tk_wm.title(top, "Callback demo")
+julia> top.title("Callback demo")
 
 julia> canvas = Canvas(top, :background => "#282c34", :cursor => :target)
 Canvas(".top1.cnv1")

@@ -2,7 +2,7 @@ using Colors, TclTk
 
 # Top-level widget with title.
 top = Toplevel(background="#282c34")
-tk_wm.title(top, "Canvas demo")
+top.title("Canvas demo")
 
 # Create a canvas widget. The "closeenough" settings (in pixels) is to facilitate the
 # selection of a marker to delete.

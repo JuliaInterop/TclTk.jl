@@ -63,8 +63,8 @@ function labelframedemo()
     wname = ".labelframe"
     tcl_eval("::catch {destroy $wname}")
     w = Toplevel(wname)
-    interp(:wm, :title, w, "Labelframe Demonstration")
-    interp(:wm, :iconname, w, "labelframe")
+    w.title("Labelframe Demonstration")
+    w.iconname("labelframe")
 
     # Some information
     msg = Label(w, "msg", #:font => "Helveltica",

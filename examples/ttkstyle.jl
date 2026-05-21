@@ -8,8 +8,8 @@
 w = ".ttkstyle"
 tcl_eval("catch {destroy $w}")
 top = Toplevel(interp, w)
-wm.title(top, "Simple Ttk Widgets")
-wm.iconname(top, "ttkstyle")
+top.title("Simple Ttk Widgets")
+top.iconname("ttkstyle")
 
 # Label can replace Message.
 msg = Label(top, #=font=$font,=# wraplength="4i", justify=:left, padding=(5, 3),

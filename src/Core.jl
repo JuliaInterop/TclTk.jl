@@ -47,6 +47,7 @@ import ..TclTk:
     cget,
     configure,
     deletecommand,
+    expand!,
     grid,
     pack,
     place,

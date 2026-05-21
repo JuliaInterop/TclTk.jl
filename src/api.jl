@@ -172,3 +172,7 @@ function tk_chooseDirectory end
 function tk_getOpenFile end
 function tk_getSaveFile end
 function tk_messageBox end
+
+#---------------------------------------------------------------------------------- Images -
+
+function expand! end

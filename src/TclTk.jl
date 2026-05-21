@@ -72,6 +72,7 @@ using TypeUtils: @public
     cget,
     configure,
     deletecommand,
+    expand!,
     grid,
     pack,
     place,

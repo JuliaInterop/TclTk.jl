@@ -211,17 +211,24 @@ function Base.resize!(img::TkPhoto, width::Integer, height::Integer)
     height ≤ typemax(Cint) || argument_error("height is too large, got $height")
     GC.@preserve img begin
         handle = checked_photo_handle(img)
-        current_width, current_height = unsafe_get_photo_size(handle)
-        if width != current_width || height != current_height
-            # Not clear (from Tcl/Tk doc.) why the following should be done and I had to
-            # dive into the source code TkImgPhoto.c to figure out how to actually resize
-            # the image (just calling Tk_PhotoSetSize with the correct size yields
-            # segmentation fault).
-            status = Tk_PhotoSetSize(C_NULL, handle, zero(Cint), zero(Cint))
-            status == TCL_OK || TclError("cannot set Tk photo size")
-            status = Tk_PhotoExpand(C_NULL, handle, width, height)
-            status == TCL_OK || TclError("cannot expand Tk photo")
-        end
+        status = Tk_PhotoSetSize(C_NULL, handle, zero(Cint), zero(Cint))
+        status == TCL_OK || TclError("cannot set Tk photo size")
+    end
+    return img
+end
+
+expand!(img::TkPhoto, (width, height)::Tuple{Integer,Integer}) =
+    expand!(img, width, height)
+
+function expand!(img::TkPhoto, width::Integer, height::Integer)
+    width ≥ 𝟘 || argument_error("width must be nonnegative, got $width")
+    width ≤ typemax(Cint) || argument_error("width is too large, got $width")
+    height ≥ 𝟘 || argument_error("height must be nonnegative, got $height")
+    height ≤ typemax(Cint) || argument_error("height is too large, got $height")
+    GC.@preserve img begin
+        handle = checked_photo_handle(img)
+        status = Tk_PhotoExpand(C_NULL, handle, width, height)
+        status == TCL_OK || TclError("cannot expand Tk photo")
     end
     return img
 end

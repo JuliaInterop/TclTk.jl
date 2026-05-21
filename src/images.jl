@@ -176,7 +176,7 @@ end
 #-------------------------------------------------------------------- Photo core functions -
 
 unsafe_find_photo(img::TkPhoto) = unsafe_find_photo(img.name)
-unsafe_find_photo(img::Name) = unsafe_find_photo(convert(String, name)::String)
+unsafe_find_photo(img::Name) = unsafe_find_photo(convert(String, img)::String)
 function unsafe_find_photo(name::FastString)
     handle = GC.@preserve name begin
         with_interpreter() do interp

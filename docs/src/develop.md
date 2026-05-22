@@ -1,18 +1,18 @@
 # Internal API for developers
 
 ```@docs
-TclTk.Core.WrappedObject
-TclTk.Core.Tcl_DecrRefCount
-TclTk.Core.Tcl_GetRefCount
-TclTk.Core.Tcl_IncrRefCount
-TclTk.Core.new_list
-TclTk.Core.new_object
-TclTk.Core.unsafe_append_element
-TclTk.Core.unsafe_append_list
-TclTk.Core.unsafe_convert
-TclTk.Core.unsafe_error
-TclTk.Core.unsafe_object_type
-TclTk.Core.unsafe_objptr
-TclTk.Core.unsafe_get_result
-TclTk.Core.unsafe_set_result
+TclTk.Impl.WrappedObject
+TclTk.Impl.Tcl_DecrRefCount
+TclTk.Impl.Tcl_GetRefCount
+TclTk.Impl.Tcl_IncrRefCount
+TclTk.Impl.new_list
+TclTk.Impl.new_object
+TclTk.Impl.unsafe_append_element
+TclTk.Impl.unsafe_append_list
+TclTk.Impl.unsafe_convert
+TclTk.Impl.unsafe_error
+TclTk.Impl.unsafe_object_type
+TclTk.Impl.unsafe_objptr
+TclTk.Impl.unsafe_get_result
+TclTk.Impl.unsafe_set_result
 ```

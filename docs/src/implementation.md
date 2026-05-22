@@ -1,30 +1,20 @@
-## Orgianization
+## Organization
 
 ```julia
-module Tcl
-    module Core
-        # imports definitions from ..LibTcl and ..LibTk
-        using ..LibTcl
-        using ..LibTk
-
+module TclTk
+    module Defs
+        # Definitions of basic types and constants.
     end
-    module LibTcl
-        # provide calls to Tcl library
-        include("../deps/tcldefs.jl")
-    end
-    module LibTk
-       # imports definitions from LibTcl
-       using ..LibTcl
-       # provide calls to Tk library
-       include("../deps/tkdefs.jl")
+    module Impl
+        # Low level interface to Tcl/Tk C libraries.
     end
 end
 ```
 
-Most Tcl functions require a Tcl interpreter or that at least one Tcl
-interpreter has been created and that `Tcl_Init` has been called.  Simlarly for
-Tk, `Tk_init` must have been called otherwise even simple functions like
-`Tk_GetUid` wont't work or cause errors like segmentation faults.
+Most Tcl functions require a Tcl interpreter or that at least one Tcl interpreter has been
+created and that `Tcl_Init` has been called. Simlarly for Tk, `Tk_init` must have been
+called otherwise even simple functions like `Tk_GetUid` wont't work or cause errors like
+segmentation faults.
 
 
 A `ccall` like:

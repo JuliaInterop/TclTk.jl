@@ -91,6 +91,7 @@ using UnsetIndex
 include("defs.jl")
 include("types.jl")
 include("api.jl")
+include("arrays.jl")
 include("dialogs.jl")
 include("impl.jl")
 @reexport import .Impl:

@@ -9,6 +9,7 @@ SOURCES = \
     src/lists.md \
     src/objects.md \
     src/public.md \
+    src/variables.md \
     src/widgets.md \
     src/winfo.md
 

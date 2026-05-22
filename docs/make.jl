@@ -19,6 +19,7 @@ makedocs(
         "objects.md",
         "lists.md",
         "interpreters.md",
+        "variables.md",
         "callbacks.md",
         "widgets.md",
         "winfo.md",

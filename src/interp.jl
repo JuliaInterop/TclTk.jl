@@ -247,7 +247,7 @@ result:
 * If `T` is `Tuple{TclStatus,R}`, the status and the result of the Tcl command are returned
   as a 2-tuple and with the result converted to type `R`. In practice, `R` is one of
   `TclObj`, `String`, or `Nothing`. No conversion of the result is attempted if `R` is
-  `Nothing` which is useful is the caller is only interested in the status.
+  `Nothing` which is useful when the caller is only interested in the status.
 
 * Otherwise, if the command status is [`TCL_OK`](@ref TclStatus), the result of the command
   is returned as a value of type `T`. No conversion of the result is attempted if `T` is

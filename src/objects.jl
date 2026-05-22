@@ -41,7 +41,7 @@ Tcl object may always be converted into a string by calling `convert(String, obj
 
 # See also
 
-[`TclTk.list`](@ref) or [`TclTk.concat`](@ref) for building Tcl objects to efficiently store
+[`tcl_list`](@ref) or [`tcl_concat`](@ref) for building Tcl objects to efficiently store
 arguments of Tcl commands.
 
 Methods [`TclTk.Core.new_object`](@ref) and [`TclTk.Core.unsafe_convert`](@ref) may be

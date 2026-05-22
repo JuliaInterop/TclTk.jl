@@ -60,9 +60,11 @@ Versioning](https://semver.org).
 
 ### Added
 
-- New `wm` function for interacting with the window manager. This function accepts
-  sub-commands. For example, `wm.title(w, "Window Title")` to specify the title of the top
-  level window `w`.
+- New `tcl_evalfile` function for evaluate a Tcl script written in a file.
+
+- New `TclTk.wm` function for interacting with the window manager. This function accepts
+  sub-commands. For example, `TclTk.wm.title(w, "Window Title")` to specify the title of the
+  top level window `w`.
 
 - Top-level widgets have a default icon set with the logo displayed in the documentation.
 
@@ -74,10 +76,6 @@ Versioning](https://semver.org).
   obj[i])`, or `convert(T, obj[inds])`, calling `fetch` is more general as `T` can be the
   type of an object (such as a widget or an image) that lives in an interpreter and a bit
   faster as `fetch` avoids temporaries.
-
-### Optimized
-
-- After Tk and Ttk packages have been loaded, `tk_start` runs much faster.
 
 
 ## Version 0.3.0 (2026-03-04)

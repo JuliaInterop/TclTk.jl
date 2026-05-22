@@ -9,5 +9,5 @@ The source code of `TclTk` is on [GitHub](https://github.com/JuliaInterop/TclTk.
 ## Table of contents
 
 ```@contents
-Pages = ["objects.md", "lists.md", "interpreters.md", "callbacks.md", "widgets.md", "winfo.md", "dialogs.md", "images.md", "public.md", "develop.md",]
+Pages = ["objects.md", "lists.md", "interpreters.md", "variables.md", "callbacks.md", "widgets.md", "winfo.md", "dialogs.md", "images.md", "public.md", "develop.md",]
 ```

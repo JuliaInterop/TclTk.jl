@@ -1,4 +1,8 @@
+
+FIXME Redo bemchmarks.
+
 # Notes for developers
+
 
 ## Management of Tcl objects.
 
@@ -102,7 +106,7 @@ evaluate script with Tcl interpreter `interp` and convert result to type `T`.
 Identical to:
 
 ```julia
-TclTk.eval([T], interp, script)
+tcl_eval([T], interp, script)
 ```
 
 ## Lists
@@ -121,7 +125,7 @@ For instance (the backslash is to let Tcl interpolate the `$` sign):
 script = TclObj("expr {sin(\$x)}")
 TclTk.setvar!("x", 2)
 using BenchmarkTools
-@benchmark TclTk.eval(TclStatus, script)
+@benchmark tcl_eval(TclStatus, script)
 ```
 
 reports (on my machine) a maximum execution time of 7.3 µs but a median time of
@@ -132,8 +136,8 @@ faster (about 15 times faster in this case).  This compilation remains valid if
 you change the variable value:
 
 ```julia
-TclTk.setvar!("x", 3); TclTk.eval(script)   # yields  0.141120...
-TclTk.setvar!("x", 4); TclTk.eval(script)   # yields -0.756802...
+TclTk.setvar!("x", 3); tcl_eval(script)   # yields  0.141120...
+TclTk.setvar!("x", 4); tcl_eval(script)   # yields -0.756802...
 ```
 
 Note that using the `raw` string decoration leads to more readable scripts.
@@ -157,9 +161,9 @@ tcl = TclInterp()
 # Setting a Tcl variable
 @btime TclTk.setvar!($tcl,"x", 9)   #  150.214 ns (0 allocations: 0 bytes)
 @btime $tcl("set x 9")           #  994.500 ns (2 allocations: 48 bytes)
-@btime TclTk.eval($tcl, "set x 9") #  993.154 ns (2 allocations: 48 bytes)
-@btime TclTk.eval("set x 9")       # 1060     ns (2 allocations: 48 bytes)
-@btime TclTk.eval(TclStatus,"set x 9") # 910.718 ns (0 allocations: 0 bytes)
+@btime tcl_eval($tcl, "set x 9") #  993.154 ns (2 allocations: 48 bytes)
+@btime tcl_eval("set x 9")       # 1060     ns (2 allocations: 48 bytes)
+@btime tcl_eval(TclStatus,"set x 9") # 910.718 ns (0 allocations: 0 bytes)
 
 @btime $tcl(Int,"set x 9")      # 943.852 ns (0 allocations: 0 bytes)
 
@@ -321,10 +325,10 @@ unset $name        0.4µs    (after compiling)
 ```
 
 ```julia
-TclTk.eval("concat hello world!")         1.2 µs
-TclTk.eval("list hello world!")          16   µs
-TclTk.exec("concat", "hello", "world!")   7   µs
-TclTk.exec("list", "hello", "world!")    24   µs
+tcl_eval("concat hello world!")         1.2 µs
+tcl_eval("list hello world!")          16   µs
+tcl_exec("concat", "hello", "world!")   7   µs
+tcl_exec("list", "hello", "world!")    24   µs
 ```
 
 ## Private methods

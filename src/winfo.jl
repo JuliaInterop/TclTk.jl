@@ -1,5 +1,51 @@
 import TclTk: winfo
 
+# Define `winfo` sub-commands first (they are needed in the `WINFO` constant).
+
+winfo_exists(w::Union{TkWidget,Name}) = winfo(Bool, :exists, w)
+winfo_parent(w::Union{TkWidget,Name}) = winfo(String, :parent, w)
+winfo_name(w::Union{TkWidget,Name}) = winfo(String, :name, w)
+
+winfo_class(w::TkWidget) = winfo_class(w.path)
+function winfo_class(path::Name)
+    # `winfo class .` yields the name of the application which is not what we want. So, we
+    # must specifically consider the case of the "." window.
+    return isrootwidget(path) ? :Toplevel : winfo(Symbol, :class, path)
+    # TODO for Tix widgets, we may instead use:
+    # class = string(tcl_exec(path, :configure, "-class")[4])
+end
+
+winfo_interps(w::Union{TkWidget,Name}) = winfo(Vector{String}, :interps, "-displayof", w)
+
+winfo_visualsavailable(w::Union{TkWidget,Name}) =
+    winfo(Vector{Tuple{Symbol,Int}}, :visualsavailable, w)
+
+winfo_visualsavailable_includeids(w::Union{TkWidget,Name}) =
+     winfo(Vector{Tuple{Symbol,Int,UInt32}}, :visualsavailable, w, :includeids)
+
+winfo_atom(w::Union{TkWidget,Name}) = PrefixedFunction(winfo_atom, w)
+winfo_atom(w::Union{TkWidget,Name}, name) = winfo(UInt32, :atom, "-displayof", w, name)
+
+winfo_atomname(w::Union{TkWidget,Name}) = PrefixedFunction(winfo_atomname, w)
+winfo_atomname(w::Union{TkWidget,Name}, id) = winfo(String, :atomname, "-displayof", w, id)
+
+winfo_containing(w::Union{TkWidget,Name}) = PrefixedFunction(winfo_containing, w)
+winfo_containing(w::Union{TkWidget,Name}, rootx, rooty) =
+     winfo(String, :containing, "-displayof", w, rootx, rooty)
+
+winfo_fpixels(w::Union{TkWidget,Name}) = PrefixedFunction(winfo_fpixels, w)
+winfo_fpixels(w::Union{TkWidget,Name}, number) = winfo(Float64, :fpixels, w, number)
+
+winfo_pathname(w::Union{TkWidget,Name}) = PrefixedFunction(winfo_pathname, w)
+winfo_pathname(w::Union{TkWidget,Name}, id) = winfo(String, :pathname, "-displayof", w, id)
+
+winfo_pixels(w::Union{TkWidget,Name}) = PrefixedFunction(winfo_pixels, w)
+winfo_pixels(w::Union{TkWidget,Name}, number) = winfo(Int, :pixels, w, number)
+
+winfo_rgb(w::Union{TkWidget,Name}) = PrefixedFunction(winfo_rgb, w)
+winfo_rgb(w::Union{TkWidget,Name}, color) = reinterpret_as_colorant(
+    winfo(NTuple{3,UInt16}, :rgb, w, color))
+
 # Sub-commands of Tk `winfo` procedure, in alphabetical order.
 const WINFO = (
     :atom             => (false, typeof(winfo_atom)),
@@ -73,47 +119,3 @@ winfo(::Type{T}, option::Word, args...) where {T} = tcl_exec(T, "::winfo", optio
 winfo(w::TkWidget, option::Word) = winfo(option, w)
 winfo(option::Word, w::TkWidget) = winfo(TclObj, option, w)
 winfo(::Type{T}, w::TkWidget, option::Word) where {T} = winfo(T, option, w)
-
-winfo_exists(w::Union{TkWidget,Name}) = winfo(Bool, :exists, w)
-winfo_parent(w::Union{TkWidget,Name}) = winfo(String, :parent, w)
-winfo_name(w::Union{TkWidget,Name}) = winfo(String, :name, w)
-
-winfo_class(w::TkWidget) = winfo_class(w.path)
-function winfo_class(path::Name)
-    # `winfo class .` yields the name of the application which is not what we want. So, we
-    # must specifically consider the case of the "." window.
-    return isrootwidget(path) ? :Toplevel : winfo(Symbol, :class, path)
-    # TODO for Tix widgets, we may instead use:
-    # class = string(tcl_exec(path, :configure, "-class")[4])
-end
-
-winfo_interps(w::Union{TkWidget,Name}) = winfo(Vector{String}, :interps, "-displayof", w)
-
-winfo_visualsavailable(w::Union{TkWidget,Name}) =
-    winfo(Vector{Tuple{Symbol,Int}}, :visualsavailable, w)
-
-winfo_visualsavailable_includeids(w::Union{TkWidget,Name}) =
-     winfo(Vector{Tuple{Symbol,Int,UInt32}}, :visualsavailable, w, :includeids)
-
-winfo_atom(w::Union{TkWidget,Name}) = PrefixedFunction(winfo_atom, w)
-winfo_atom(w::Union{TkWidget,Name}, name) = winfo(UInt32, :atom, "-displayof", w, name)
-
-winfo_atomname(w::Union{TkWidget,Name}) = PrefixedFunction(winfo_atomname, w)
-winfo_atomname(w::Union{TkWidget,Name}, id) = winfo(String, :atomname, "-displayof", w, id)
-
-winfo_containing(w::Union{TkWidget,Name}) = PrefixedFunction(winfo_containing, w)
-winfo_containing(w::Union{TkWidget,Name}, rootx, rooty) =
-     winfo(String, :containing, "-displayof", w, rootx, rooty)
-
-winfo_fpixels(w::Union{TkWidget,Name}) = PrefixedFunction(winfo_fpixels, w)
-winfo_fpixels(w::Union{TkWidget,Name}, number) = winfo(Float64, :fpixels, w, number)
-
-winfo_pathname(w::Union{TkWidget,Name}) = PrefixedFunction(winfo_pathname, w)
-winfo_pathname(w::Union{TkWidget,Name}, id) = winfo(String, :pathname, "-displayof", w, id)
-
-winfo_pixels(w::Union{TkWidget,Name}) = PrefixedFunction(winfo_pixels, w)
-winfo_pixels(w::Union{TkWidget,Name}, number) = winfo(Int, :pixels, w, number)
-
-winfo_rgb(w::Union{TkWidget,Name}) = PrefixedFunction(winfo_rgb, w)
-winfo_rgb(w::Union{TkWidget,Name}, color) = reinterpret_as_colorant(
-    winfo(NTuple{3,UInt16}, :rgb, w, color))

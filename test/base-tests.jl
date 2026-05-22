@@ -64,6 +64,29 @@ const φ = MathConstants.φ
     @test_throws ArgumentError TclTk.bool("maybe")
     @test @inferred(TclTk.bool(TclObj(true))) === true
     @test @inferred(TclTk.bool(TclObj(false))) === false
+
+    # Quoted strings.
+    @test @inferred(tcl_quote_string("")) == "\"\""
+    @test @inferred(tcl_quote_string("a")) == "\"a\""
+    @test @inferred(tcl_quote_string("  a")) == "\"  a\""
+    @test @inferred(tcl_quote_string("a    ")) == "\"a    \""
+    @test @inferred(tcl_quote_string(" a  b   ")) == "\" a  b   \""
+    @test @inferred(tcl_quote_string("x\\\0w")) == "\"x\\\\\300\200w\""
+    let s = "}\"\e\a\b\t\n\v\f\r{"
+        @test @inferred(tcl_eval(String, "set dummy $(tcl_quote_string(s))")) == s
+    end
+    let s = "áéíóúýàèìòùỳäëïöüÿâêîôûŷß"
+        @test @inferred(tcl_eval(String, "set dummy $(tcl_quote_string(s))")) == s
+    end
+    let s = "ÁÉÍÓÚÝÀÈÌÒÙỲÄËÏÖÜŸÂÊÎÔÛŶ"
+        @test @inferred(tcl_eval(String, "set dummy $(tcl_quote_string(s))")) == s
+    end
+    let s = "αβδεϵϕφγηιθκλμνοπχρστυωξψζ"
+        @test @inferred(tcl_eval(String, "set dummy $(tcl_quote_string(s))")) == s
+    end
+    let s = "ΑΒΔΕΦΓΗΙΘΚΛΜΝΟΠΧΡΣΤΥΩΞΨΖ"
+        @test @inferred(tcl_eval(String, "set dummy $(tcl_quote_string(s))")) == s
+    end
 end
 
 @testset "Tcl Objects" begin

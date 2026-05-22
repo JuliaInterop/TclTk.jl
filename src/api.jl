@@ -101,8 +101,6 @@ function tcl_quote_string(str::AbstractString)
                 end
             elseif c == '\0'
                 print(io, "\300\200") # see man page of `Tcl_NewStringObj`
-            elseif c == '\e'
-                print(io, "\\e")
             elseif '\a' <= c <= '\r'
                 print(io, '\\', "abtnvfr"[Int(c)-6])
             else

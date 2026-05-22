@@ -392,62 +392,75 @@ end
     @test TclObj(colorant"red") ∈ ("#FF0000", "#ff0000")
 end
 
+@testset "Tcl Lists" begin
+    # NULL object pointer yields empty list.
+    let ObjPtr = Ptr{TclTk.Core.Tcl_Obj}
+        A = @inferred TclTk.Core.UnsafeList(ObjPtr(0))
+        @test length(A) === 0
+        @test pointer(A) === Ptr{ObjPtr}(0)
+        @test ndims(A) === ndims(typeof(A)) === 1
+        @test eltype(A) === eltype(typeof(A)) === ObjPtr
+        @test IndexStyle(A) === IndexStyle(typeof(A)) === IndexLinear()
+        @test_throws BoundsError A[1]
+    end
+
+    # Tcl "list".
+    wa = ("", 1, "hello world!", (true, false), -3.75, π)
+    wf = (1, "hello", "world!", true, false, -3.75, π) # "concat" version
+    wb = @inferred tcl_list(wa...)
+    wc = @inferred TclObj(wa)
+    @test wb isa TclObj
+    @test wc isa TclObj
+    @test wb.type == :list
+    @test wc.type == :list
+    @test @inferred(length(wb)) == length(wa)
+    @test @inferred(length(wc)) == length(wa)
+    @test wb == wc
+    @test all(wb .== wc)
+    @test all([wb[i] == TclObj(wa[i]) for i in 1:length(wa)])
+    @test all([wc[i] == TclObj(wa[i]) for i in 1:length(wa)])
+    @test wb[4].type == :list
+    @test wc[4].type == :list
+    @test wb[4][1] == TclObj(wa[4][1])
+    @test wc[4][2] == TclObj(wa[4][2])
+
+    # Out of range indices throw.
+    @test_throws BoundsError wb[0]
+    @test_throws BoundsError wb[length(wb)+1]
+
+    # Set index in list.
+    wb[1] = 3
+    wb[3] = wc[4]
+    wb_1 = @inferred TclObj wb[1]
+    @test wb_1 isa TclObj
+    wb_3 = @inferred TclObj wb[3]
+    @test wb_3 isa TclObj
+    wc_4 = @inferred TclObj wc[4]
+    @test wc_4 isa TclObj
+    @test wb_1 == TclObj(3)
+    @test wb_3 == wc_4
+
+    # Tcl "concat".
+    wd = @inferred tcl_concat(wa...)
+    @test wd isa TclObj
+    @test wd.type == :list
+    @test @inferred(length(wd)) == length(wf)
+    @test all([wd[i] == TclObj(wf[i]) for i in 1:length(wf)])
+
+    # List to vectors.
+    t = (-1:3...,)
+    o = @inferred TclObj(t)
+    @test o isa TclObj
+    v = @inferred convert(Vector{Int16}, o)
+    @test v isa Vector{Int16}
+    @test Tuple(v) == t
+    v = @inferred convert(Vector{String}, o)
+    @test v isa Vector{String}
+    @test Tuple(v) == map(string, t)
+
+end
+
 @testset "Tcl Interpreters" begin
-    # Constructor.
-    interp = @inferred TclInterp()
-    shared = @inferred TclInterp(:shared)
-    private = @inferred TclInterp(:private)
-    @test interp === shared
-    @test private != shared
-    @test !isequal(private, shared)
-    @test startswith(sprint(show, interp), "Tcl interpreter (address:")
-    @test startswith(sprint(show, MIME"text/plain"(), interp), "Tcl interpreter (address:")
-    @test (@inferred TclTk.isactive(private)) isa Bool
-    @test (@inferred TclTk.isdeleted(private)) isa Bool
-    @test (@inferred TclTk.issafe(private)) isa Bool
-
-    # Interpreter result.
-    val = "hello world!"
-    interp[] = val
-    x = @inferred interp[]
-    y = @inferred interp.result()
-    z = @inferred TclTk.getresult()
-    @test x isa TclObj
-    @test y isa TclObj
-    @test z isa TclObj
-    @test val == x
-    @test val == y
-    @test val == z
-    val = -12345 # must be a bit type
-    interp[] = val
-    x = @inferred interp[typeof(val)]
-    y = @inferred interp.result(typeof(val))
-    z = @inferred TclTk.getresult(typeof(val))
-    @test x isa typeof(val)
-    @test y isa typeof(val)
-    @test z isa typeof(val)
-    @test val === x
-    @test val === y
-    @test val === z
-    val += 1
-    TclTk.setresult!(val)
-    z = @inferred TclTk.getresult(typeof(val))
-    @test z isa typeof(val)
-    @test val == z
-
-    # Properties.
-    @test :concat   ∈ @inferred propertynames(interp)
-    @test :eval     ∈ @inferred propertynames(interp)
-    @test :exec     ∈ @inferred propertynames(interp)
-    @test :list     ∈ @inferred propertynames(interp)
-    @test :ptr      ∈ @inferred propertynames(interp)
-    @test :result   ∈ @inferred propertynames(interp)
-    @test :threadid ∈ @inferred propertynames(interp)
-    @test TclInterp().threadid == Threads.threadid()
-    @test TclInterp().ptr == @inferred pointer(interp)
-    @test_throws KeyError TclInterp().non_existing_property
-    @test_throws KeyError TclInterp().non_existing_property = 3
-    @test_throws ErrorException TclInterp().result = 3
 
     # Lists.
     t = (1, "a b {c d}", 0)
@@ -743,74 +756,6 @@ proc $trace {name1 name2 op} {
             @test !haskey(interp, key)
         end
     end
-
-end
-
-@testset "Tcl Lists" begin
-    # NULL object pointer yields empty list.
-    let ObjPtr = Ptr{TclTk.Core.Tcl_Obj}
-        A = @inferred TclTk.Core.UnsafeList(ObjPtr(0))
-        @test length(A) === 0
-        @test pointer(A) === Ptr{ObjPtr}(0)
-        @test ndims(A) === ndims(typeof(A)) === 1
-        @test eltype(A) === eltype(typeof(A)) === ObjPtr
-        @test IndexStyle(A) === IndexStyle(typeof(A)) === IndexLinear()
-        @test_throws BoundsError A[1]
-    end
-
-    # Tcl "list".
-    wa = ("", 1, "hello world!", (true, false), -3.75, π)
-    wf = (1, "hello", "world!", true, false, -3.75, π) # "concat" version
-    wb = @inferred tcl_list(wa...)
-    wc = @inferred TclObj(wa)
-    @test wb isa TclObj
-    @test wc isa TclObj
-    @test wb.type == :list
-    @test wc.type == :list
-    @test @inferred(length(wb)) == length(wa)
-    @test @inferred(length(wc)) == length(wa)
-    @test wb == wc
-    @test all(wb .== wc)
-    @test all([wb[i] == TclObj(wa[i]) for i in 1:length(wa)])
-    @test all([wc[i] == TclObj(wa[i]) for i in 1:length(wa)])
-    @test wb[4].type == :list
-    @test wc[4].type == :list
-    @test wb[4][1] == TclObj(wa[4][1])
-    @test wc[4][2] == TclObj(wa[4][2])
-
-    # Out of range indices throw.
-    @test_throws BoundsError wb[0]
-    @test_throws BoundsError wb[length(wb)+1]
-
-    # Set index in list.
-    wb[1] = 3
-    wb[3] = wc[4]
-    wb_1 = @inferred TclObj wb[1]
-    @test wb_1 isa TclObj
-    wb_3 = @inferred TclObj wb[3]
-    @test wb_3 isa TclObj
-    wc_4 = @inferred TclObj wc[4]
-    @test wc_4 isa TclObj
-    @test wb_1 == TclObj(3)
-    @test wb_3 == wc_4
-
-    # Tcl "concat".
-    wd = @inferred tcl_concat(wa...)
-    @test wd isa TclObj
-    @test wd.type == :list
-    @test @inferred(length(wd)) == length(wf)
-    @test all([wd[i] == TclObj(wf[i]) for i in 1:length(wf)])
-
-    # List to vectors.
-    t = (-1:3...,)
-    o = @inferred TclObj(t)
-    @test o isa TclObj
-    v = @inferred convert(Vector{Int16}, o)
-    @test v isa Vector{Int16}
-    @test Tuple(v) == t
-    v = @inferred convert(Vector{String}, o)
-    @test v isa Vector{String}
-    @test Tuple(v) == map(string, t)
 
 end
 

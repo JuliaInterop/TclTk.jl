@@ -65,10 +65,89 @@ function tcl_evalfile end
 function tcl_exec end
 
 #------------------------------------------------------------------------------- Variables -
+
+# The following basic methods are implemented in the `Core` module.
 function tcl_getvar end
 function tcl_isassigned end
 function tcl_setvar end
 function tcl_unsetvar end
+
+"""
+   A = TclVariable{T}(var)
+
+Return a Julia object `A` linked to the global Tcl variable named `var`. The variable value
+is given by `A[]` and can be set by `A[] = x`.
+
+Type parameter `T` is the assumed Julia type of the value that can be stored in this
+variable. If not specified, `TclObj` is assumed for `T`, hence the variable may store any
+type of Tcl object. If variable type parameter is `T = TclObj`, expression `fetch(S, A)`,
+with `S` a type, can be used to efficiently convert the value of the variable to type `S`.
+
+Currently, `var` must refer to a simple Tcl variable or to a single element of a Tcl array
+(in which case, `name` may be a 2-tuple `(part1, part2)`), not to a Tcl array name.
+
+Property `A.name` yields the name of the Tcl variable.
+
+Call `eltype(A)` to retrieve the type of `A` and `isassigned(A)` or
+[`tcl_isassigned(A)`](@ref tcl_isassigned) to check whether `A` has an associated value. To
+unset the value of `A`, call `delete!(A)`, [`tcl_unsetvar(A)`](@ref tcl_unsetvar), or do
+`A[] = unset`.
+
+Example:
+
+```julia-repl
+julia> A = TclVariable{Int}("::GLOBAL_COUNTER")
+TclVariable{Int64}(name: "::GLOBAL_COUNTER", value: #undef)
+
+julia> A[] = 0
+0
+
+julia> A
+TclVariable{Int64}(name: "::GLOBAL_COUNTER", value: 0)
+
+julia> tcl_exec(:incr, A.name, 4) # increment variable with Tcl `incr` command
+
+julia> A[]
+4
+
+```
+
+"""
+TclVariable(var::VarName) = TclVariable{TclObj}(var)
+TclVariable{T}(var::Tuple{2,Name}) where {T} = TclVariable{T}(TclObj("$(var[1])($(var[2]))"))
+
+Base.show(io::IO, ::MIME"text/plain", A::TclVariable) = show(io, A)
+function Base.show(io::IO, A::TclVariable{T}) where {T}
+    print(io, "TclVariable{", T, "}(name: \"")
+    escape_string(io, string(A.name))
+    print(io, "\", value: ")
+    if isassigned(A)
+        show(io, A[])
+    else
+        print(io, "#undef")
+    end
+    print(io, ")")
+end
+
+Base.eltype(::Type{TclVariable{T}}) where {T} = T
+
+Base.isassigned(A::TclVariable) = tcl_isassigned(A.name)
+tcl_isassigned(A::TclVariable) = isassigned(A)
+
+Base.getindex(A::TclVariable{T}) where {T} = tcl_getvar(A)
+Base.fetch(::Type{T}, A::TclVariable) where {T} = tcl_getvar(T, A)
+tcl_getvar(A::TclVariable{T}) where {T} = tcl_getvar(T, A)
+tcl_getvar(::Type{T}, A::TclVariable{<:Union{T,TclObj}}) where {T} = tcl_getvar(T, A.name)
+
+function Base.setindex!(A::TclVariable, x)
+    tcl_setvar(A, x)
+    return A
+end
+tcl_setvar(A::TclVariable, x) = tcl_setvar(Nothing, A, x)
+tcl_setvar(::Type{T}, A::TclVariable, x) where {T} = tcl_setvar(T, A.name, x)
+
+Base.delete!(A::TclVariable) = tcl_unsetvar(A; nocomplain=true)
+tcl_unsetvar(A::TclVariable; kwds...) = tcl_unsetvar(A.name; kwds...)
 
 #------------------------------------------------------------------------------- Callbacks -
 function deletecommand end

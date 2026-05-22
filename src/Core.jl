@@ -8,17 +8,20 @@ module Core
 using ..TclTk
 
 using ..TclTk:
-    _TclObj,
-    _TkImage,
+    Name,
+    TagOrId,
     TkObject,
-    WrappedObject
+    VarName,
+    Word,
+    WrappedObject,
+    _TclObj,
+    _TkImage
 
 # Import public symbols that are implemented or extended in this module.
 import ..TclTk:
     # Constructors.
     TclCallback,
     TclObj,
-    TclVariable,
     TkBitmap,
     TkImage,
     TkPhoto,

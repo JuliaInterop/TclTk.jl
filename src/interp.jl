@@ -119,11 +119,13 @@ end
     interp = @ccall libtcl.Tcl_CreateInterp()::Ptr{Tcl_Interp}
     isnull(interp) && tcl_error("unable to create Tcl interpreter")
     try
+        # Flags for variables.
+        flags = TCL_GLOBAL_ONLY|TCL_LEAVE_ERR_MSG
+
         # Initialize Tcl interpreter to find Tcl library scripts.
         tcl_library = joinpath(dirname(dirname(Tcl_jll.libtcl_path)), "lib",
                                "tcl$(TCL_MAJOR_VERSION).$(TCL_MINOR_VERSION)")
-        ptr = Tcl_SetVar(interp, "tcl_library", tcl_library,
-                         TCL_GLOBAL_ONLY|TCL_LEAVE_ERR_MSG)
+        ptr = Tcl_SetVar(interp, "tcl_library", tcl_library, flags)
         isnull(ptr) && tcl_error("unable to set `tcl_library`: ",
                                  unsafe_get_result(String, interp))
         status = @ccall libtcl.Tcl_Init(interp::Ptr{Tcl_Interp})::TclStatus
@@ -133,8 +135,8 @@ end
         # Initialize Tcl interpreter to find Tk library scripts.
         tk_library = joinpath(dirname(dirname(Tk_jll.libtk_path)), "lib",
                               "tk$(TCL_MAJOR_VERSION).$(TCL_MINOR_VERSION)")
-        ptr = Tcl_SetVar(interp, "tk_library", tk_library,
-                         TCL_GLOBAL_ONLY|TCL_LEAVE_ERR_MSG)
+        env["TK_LIBRARY"] = tk_library
+        ptr = Tcl_SetVar(interp, "tk_library", tk_library, flags)
         isnull(ptr) && tcl_error("unable to set `tk_library`: ",
                                  unsafe_get_result(String, interp))
         # Load Tk and Ttk packages. It is not needed to explicitly load these packages, it

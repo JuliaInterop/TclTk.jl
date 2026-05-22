@@ -13,16 +13,19 @@ const φ = MathConstants.φ
 @testset "Utilities" begin
     # Version number.
     version = @inferred tcl_version()
+    @test version isa VersionNumber
     @test version.major == TCL_MAJOR_VERSION
     @test version.minor == TCL_MINOR_VERSION
 
     # Path to Tcl library.
-    library = tcl_library()
+    library = @inferred tcl_library()
+    @test library isa String
     @test isdir(library)
 
     # Automatic names.
     p = "some_prefix"
     s = @inferred TclTk.Core.auto_name(p)
+    @test s isa String
     @test startswith(s, p)
 
     # Convert to Boolean.

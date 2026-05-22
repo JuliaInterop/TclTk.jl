@@ -52,7 +52,7 @@ function tcl_library(; relative::Bool=false)
     major, minor, patch, rtype = tcl_version(Tuple)
     path = joinpath("lib", "tcl$(major).$(minor)")
     relative && return path
-    return joinpath(Tcl_jll.artifact_dir, path)
+    return joinpath(Core.Tcl_jll.artifact_dir, path)
 end
 
 #----------------------------------------------------------------------------------- Lists -

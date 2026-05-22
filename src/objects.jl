@@ -475,7 +475,7 @@ and must remain valid during the call to this function.
 
 """
 unsafe_convert(::Type{TclObj}, objptr::ObjPtr) = _TclObj(objptr)
-unsafe_convert(::Type{T}, x) where {T} = Base.unsafe_convert(Ptr{T}, x) # fallback
+unsafe_convert(::Type{T}, x) where {T} = Base.unsafe_convert(T, x)::T # fallback
 
 # Strings.
 #

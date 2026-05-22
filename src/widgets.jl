@@ -327,7 +327,7 @@ end
 
 
 """
-    TclTk.Core.isrootwidget(w) -> bool
+    TclTk.Impl.isrootwidget(w) -> bool
 
 Return whether `w` is the Tk root widget of window path.
 

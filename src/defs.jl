@@ -1,9 +1,9 @@
 """
 
-`TclTk.CoreDefs` module defines basic types and constants for the `TclTk` package.
+`TclTk.Defs` module defines basic types and constants for the `TclTk` package.
 
 """
-module CoreDefs
+module Defs
 
 # Assumed major and minor Tcl version.
 const TCL_MAJOR_VERSION = 9
@@ -82,7 +82,7 @@ const TCL_IDLE_EVENTS   = Cint(1<<5) # Process idle callbacks.
 const TCL_ALL_EVENTS    = ~TCL_DONT_WAIT      # Process all kinds of events.
 
 """
-    TclTk.CoreDefs.Tcl_ObjType
+    TclTk.Defs.Tcl_ObjType
 
 Julia equivalent type of C structure `Tcl_ObjType` defined in `<tcl.h>`.
 

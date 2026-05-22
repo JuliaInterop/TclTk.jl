@@ -81,8 +81,6 @@ using TypeUtils: @public
     wm
 )
 
-
-
 using CEnum
 using ColorTypes
 using Colors
@@ -90,12 +88,12 @@ using FixedPointNumbers
 using Reexport
 using UnsetIndex
 
-include("CoreDefs.jl")
+include("defs.jl")
 include("types.jl")
 include("api.jl")
 include("dialogs.jl")
-include("Core.jl")
-@reexport import .Core:
+include("impl.jl")
+@reexport import .Impl:
     Button,
     Canvas,
     Checkbutton,
@@ -121,7 +119,7 @@ include("Core.jl")
     Toplevel,
     Treeview
 
-import .Core:
+import .Impl:
     # Modules.
     Tk,
     Ttk,

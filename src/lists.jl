@@ -170,7 +170,7 @@ function unsafe_getindex(obj::Union{TclObj,ObjPtr}, index::Integer)
 end
 
 """
-    TclTk.Core.UnsafeList(objptr::ObjPtr) -> A
+    TclTk.Impl.UnsafeList(objptr::ObjPtr) -> A
 
 Return a vector of pointers to Tcl objects to access the content of `objptr` considered as a
 pointer to a Tcl list of objects.
@@ -260,15 +260,15 @@ function unsafe_replace_list(list::ObjPtr, first::Integer,
 end
 
 """
-    TclTk.Core.new_list() -> list
+    TclTk.Impl.new_list() -> list
 
 Return a pointer to a Tcl object storing an empty list.
 
-    TclTk.Core.new_list(f, args...) -> list
+    TclTk.Impl.new_list(f, args...) -> list
 
 Return a pointer to a Tcl object storing a list built by calling `f(list, arg)` for each
-`arg` in `args...`. Typically, `f` is [`TclTk.Core.unsafe_append_element`](@ref) or
-[`TclTk.Core.unsafe_append_list`](@ref).
+`arg` in `args...`. Typically, `f` is [`TclTk.Impl.unsafe_append_element`](@ref) or
+[`TclTk.Impl.unsafe_append_list`](@ref).
 
 !!! warning
     The returned object is not managed and has a zero reference count. The caller is
@@ -318,7 +318,7 @@ end
 # collected.
 
 """
-    TclTk.Core.unsafe_append_element(list, item) -> nothing
+    TclTk.Impl.unsafe_append_element(list, item) -> nothing
 
 Private method to append `item` as a single element to the Tcl object `list`.
 
@@ -337,7 +337,7 @@ object).
 
 # See also
 
-[`TclTk.Core.unsafe_append_list`](@ref) and [`TclTk.Core.new_list`](@ref).
+[`TclTk.Impl.unsafe_append_list`](@ref) and [`TclTk.Impl.new_list`](@ref).
 
 """
 function unsafe_append_element(list::ObjPtr, arg)
@@ -345,13 +345,13 @@ function unsafe_append_element(list::ObjPtr, arg)
 end
 
 """
-    TclTk.Core.unsafe_append_list(list, iter) -> nothing
+    TclTk.Impl.unsafe_append_list(list, iter) -> nothing
 
 Private method to concatenate the elements of `iter` to the end of the Tcl object `list`.
 
 # See also
 
-[`TclTk.Core.unsafe_append_element`](@ref) and [`TclTk.Core.new_list`](@ref).
+[`TclTk.Impl.unsafe_append_element`](@ref) and [`TclTk.Impl.new_list`](@ref).
 
 """
 function unsafe_append_list(list::ObjPtr, arg)

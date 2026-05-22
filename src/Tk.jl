@@ -6,7 +6,7 @@ Module `Tk` defines standard Tk widgets.
 module Tk
 
 using ...TclTk
-using ..Core: @TkWidget
+using ..Impl: @TkWidget
 
 # Top-level widgets.
 @TkWidget Toplevel      Toplevel      "::toplevel"          ".top"

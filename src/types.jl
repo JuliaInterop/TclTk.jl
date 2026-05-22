@@ -5,13 +5,13 @@
 #
 
 # Major and minor Tcl version.
-const TCL_MAJOR_VERSION = CoreDefs.TCL_MAJOR_VERSION
-const TCL_MINOR_VERSION = CoreDefs.TCL_MINOR_VERSION
+const TCL_MAJOR_VERSION = Defs.TCL_MAJOR_VERSION
+const TCL_MINOR_VERSION = Defs.TCL_MINOR_VERSION
 
 # Release numbers.
-const TCL_ALPHA_RELEASE = CoreDefs.TCL_ALPHA_RELEASE
-const TCL_BETA_RELEASE  = CoreDefs.TCL_BETA_RELEASE
-const TCL_FINAL_RELEASE = CoreDefs.TCL_FINAL_RELEASE
+const TCL_ALPHA_RELEASE = Defs.TCL_ALPHA_RELEASE
+const TCL_BETA_RELEASE  = Defs.TCL_BETA_RELEASE
+const TCL_FINAL_RELEASE = Defs.TCL_FINAL_RELEASE
 
 """
     TclStatus
@@ -37,11 +37,11 @@ Other existing values only used internally:
 
 """
 @cenum TclStatus::Cint begin
-    TCL_OK       = CoreDefs.TCL_OK
-    TCL_ERROR    = CoreDefs.TCL_ERROR
-    TCL_RETURN   = CoreDefs.TCL_RETURN
-    TCL_BREAK    = CoreDefs.TCL_BREAK
-    TCL_CONTINUE = CoreDefs.TCL_CONTINUE
+    TCL_OK       = Defs.TCL_OK
+    TCL_ERROR    = Defs.TCL_ERROR
+    TCL_RETURN   = Defs.TCL_RETURN
+    TCL_BREAK    = Defs.TCL_BREAK
+    TCL_CONTINUE = Defs.TCL_CONTINUE
 end
 
 struct TclError <: Exception
@@ -53,7 +53,7 @@ end
 
 Abstract super-type of Julia objects that reflect or wrap a Tcl object.
 
-Such objects implement [`TclTk.Core.unsafe_objptr`](@ref) to yield a checked pointer to
+Such objects implement [`TclTk.Impl.unsafe_objptr`](@ref) to yield a checked pointer to
 their associated Tcl object.
 
 """
@@ -63,20 +63,20 @@ abstract type WrappedObject end
 # modified, it is mutable because immutable objects cannot be finalized.) The constructor
 # will refuse to build a managed Tcl object with a NULL address.
 mutable struct TclObj <: WrappedObject
-    ptr::Ptr{CoreDefs.Tcl_Obj}
+    ptr::Ptr{Defs.Tcl_Obj}
     global _TclObj
-    function _TclObj(ptr::Ptr{CoreDefs.Tcl_Obj})
-        if !Core.isnull(ptr)
-            _ = Core.unsafe_object_type(ptr) # register object's type
-            Core.Tcl_IncrRefCount(ptr)
+    function _TclObj(ptr::Ptr{Defs.Tcl_Obj})
+        if !Impl.isnull(ptr)
+            _ = Impl.unsafe_object_type(ptr) # register object's type
+            Impl.Tcl_IncrRefCount(ptr)
         end
-        return finalizer(Core.finalize, new(ptr))
+        return finalizer(Impl.finalize, new(ptr))
     end
 end
 
 # `TclCallback` must be mutable to have a stable address given by `pointer_from_objref`.
 mutable struct TclCallback{F<:Function}
-    token::CoreDefs.Tcl_Command
+    token::Defs.Tcl_Command
     func::F
 end
 
@@ -121,9 +121,9 @@ struct TkImage{T} <: TkObject
         handle = C_NULL::Ptr{Cvoid}
         if T === :photo
             handle = GC.@preserve name begin
-                Core.with_interpreter() do interp
-                    @ccall Core.libtk.Tk_FindPhoto(
-                        interp::Ptr{CoreDefs.Tcl_Interp}, name::Cstring)::Ptr{Cvoid}
+                Impl.with_interpreter() do interp
+                    @ccall Impl.libtk.Tk_FindPhoto(
+                        interp::Ptr{Defs.Tcl_Interp}, name::Cstring)::Ptr{Cvoid}
                 end
             end::Ptr{Cvoid}
             handle == C_NULL && TclError("invalid Tk photo name \"$name\"")

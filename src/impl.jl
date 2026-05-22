@@ -1,9 +1,9 @@
 """
 
-`TclTk.Core` module hosts the implementation of the `TclTk` package.
+`TclTk.Impl` module hosts the implementation of the `TclTk` package.
 
 """
-module Core
+module Impl
 
 using ..TclTk
 
@@ -59,7 +59,7 @@ import ..TclTk:
     winfo,
     wm
 
-using ..CoreDefs:
+using ..Defs:
     # Constants for variables.
     TCL_GLOBAL_ONLY,
     TCL_NAMESPACE_ONLY,
@@ -100,7 +100,7 @@ using ..CoreDefs:
     TCL_IDLE_EVENTS,
     TCL_ALL_EVENTS,
 
-    # Core types.
+    # Impl types.
     ClientData,
     Tcl_CmdDeleteProc,
     Tcl_CmdProc,

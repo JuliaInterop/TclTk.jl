@@ -29,7 +29,7 @@ function tcl_version(::Type{Tuple})
     minor = Ref{Cint}()
     patch = Ref{Cint}()
     release = Ref{Cint}()
-    @ccall Core.libtcl.Tcl_GetVersion(major::Ptr{Cint}, minor::Ptr{Cint},
+    @ccall Impl.libtcl.Tcl_GetVersion(major::Ptr{Cint}, minor::Ptr{Cint},
                                       patch::Ptr{Cint}, release::Ptr{Cint})::Cvoid
     return (major[], minor[], patch[], release[])
 end
@@ -52,7 +52,7 @@ function tcl_library(; relative::Bool=false)
     major, minor, patch, rtype = tcl_version(Tuple)
     path = joinpath("lib", "tcl$(major).$(minor)")
     relative && return path
-    return joinpath(Core.Tcl_jll.artifact_dir, path)
+    return joinpath(Impl.Tcl_jll.artifact_dir, path)
 end
 
 #----------------------------------------------------------------------------------- Lists -
@@ -66,7 +66,7 @@ function tcl_exec end
 
 #------------------------------------------------------------------------------- Variables -
 
-# The following basic methods are implemented in the `Core` module.
+# The following basic methods are implemented in the `Impl` module.
 function tcl_getvar end
 function tcl_isassigned end
 function tcl_setvar end

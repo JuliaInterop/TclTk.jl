@@ -25,7 +25,7 @@ const φ = MathConstants.φ
 
     # Automatic names.
     p = "some_prefix"
-    s = @inferred TclTk.Core.auto_name(p)
+    s = @inferred TclTk.Impl.auto_name(p)
     @test s isa String
     @test startswith(s, p)
 
@@ -296,7 +296,7 @@ end
     @test tryparse(Integer, x) === nothing
     @test tryparse(Real, x) === -17.0
     @test tryparse(AbstractFloat, x) === -17.0
-    @test Base.unsafe_convert(Ptr{TclTk.Core.Tcl_Obj}, x) === pointer(x)
+    @test Base.unsafe_convert(Ptr{TclTk.Impl.Tcl_Obj}, x) === pointer(x)
     c = 'w' # one byte UTF8 char
     x = @inferred TclObj(c)
     @test x.type == :string
@@ -434,8 +434,8 @@ end
 
 @testset "Tcl Lists" begin
     # NULL object pointer yields empty list.
-    let ObjPtr = Ptr{TclTk.Core.Tcl_Obj}
-        A = @inferred TclTk.Core.UnsafeList(ObjPtr(0))
+    let ObjPtr = Ptr{TclTk.Impl.Tcl_Obj}
+        A = @inferred TclTk.Impl.UnsafeList(ObjPtr(0))
         @test length(A) === 0
         @test pointer(A) === Ptr{ObjPtr}(0)
         @test ndims(A) === ndims(typeof(A)) === 1

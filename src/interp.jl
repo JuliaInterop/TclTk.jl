@@ -40,14 +40,14 @@ const interpreter_lock = ReentrantLock() # to protect shared data between tasks
 const interpreter_ready = Ref{Bool}(false)
 
 """
-    result = TclTk.Core.with_interpreter(f)
+    result = TclTk.Impl.with_interpreter(f)
 
 Manage to call function `f` as `f(interp)` in the thread were lives `interp`, the shared Tcl
 interpreter of the application. The returned value is that returned by `f` (except that if
 an exception is returned, this exception is thrown). The following do-block syntax is
 another way to execute code involving the Tcl interpreter:
 
-    result = TclTk.Core.with_interpreter() do interp
+    result = TclTk.Impl.with_interpreter() do interp
         ...
     end
 
@@ -194,7 +194,7 @@ function process_calls()
 end
 
 """
-    TclTk.Core.unsafe_get_result(T, interp) -> val
+    TclTk.Impl.unsafe_get_result(T, interp) -> val
 
 Return the result of Tcl interpreter `interp` as a value of type `T`.
 
@@ -207,7 +207,7 @@ function unsafe_get_result(::Type{T}, interp::InterpPtr) where {T}
 end
 
 """
-    TclTk.Core.unsafe_set_result(interp, value)
+    TclTk.Impl.unsafe_set_result(interp, value)
 
 Set the result of Tcl interpreter `interp` to be `value`. If `value` is `nothing`, reset
 interpreter's result.

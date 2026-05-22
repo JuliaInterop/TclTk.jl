@@ -25,26 +25,26 @@ end
     "attempt to use a Tcl interpreter in a different thread"))
 
 """
-    TclTk.Core.isnull(ptr) -> bool
+    TclTk.Impl.isnull(ptr) -> bool
 
 Return whether pointer `ptr` is null.
 
 # See also
 
-[`TclTk.Core.null`](@ref).
+[`TclTk.Impl.null`](@ref).
 
 """
 isnull(ptr::Union{Ptr,Cstring}) = ptr === null(ptr)
 
 """
-    TclTk.Core.null(ptr) -> nullptr
-    TclTk.Core.null(typeof(ptr)) -> nullptr
+    TclTk.Impl.null(ptr) -> nullptr
+    TclTk.Impl.null(typeof(ptr)) -> nullptr
 
 Return a null-pointer of the same type as `ptr`.
 
 # See also
 
-[`TclTk.Core.isnull`](@ref).
+[`TclTk.Impl.isnull`](@ref).
 
 """
 null(ptr::Union{Ptr,Cstring}) = null(typeof(ptr))
@@ -107,7 +107,7 @@ end
 #------------------------------------------------------------------------ Automatic names -
 
 """
-    TclTk.Core.auto_name(pfx = "jl_auto_")
+    TclTk.Impl.auto_name(pfx = "jl_auto_")
 
 Return a unique name with given prefix. The result is a string of the form `pfx#` where `#`
 is a unique number.
@@ -126,7 +126,7 @@ const auto_name_dict = Dict{String,UInt64}()
 #---------------------------------------------------------------------------------- Errors -
 
 """
-    TclTk.Core.get_error_message(ex)
+    TclTk.Impl.get_error_message(ex)
 
 Return the error message associated with exception `ex`.
 
@@ -143,7 +143,7 @@ get_error_message(ex::Exception) = sprint(io -> showerror(io, ex))
 @noinline dimension_mismatch(arg, args...) = dimension_mismatch(string(arg, args...))
 
 """
-    TclTk.Core.unsafe_error(interp)
+    TclTk.Impl.unsafe_error(interp)
 
 Throw a Tcl error with a message stored in the result of `interp`.
 
@@ -155,7 +155,7 @@ Throw a Tcl error with a message stored in the result of `interp`.
 @noinline unsafe_error(interp::InterpPtr) = tcl_error(unsafe_get_result(String, interp))
 
 """
-    TclTk.Core.unsafe_error(interp, mesg)
+    TclTk.Impl.unsafe_error(interp, mesg)
 
 Throw a Tcl error. The error message is given by the result of `interp` if it refers to a
 non-null Tcl interpreter with a non-empty result; otherwise, the error message is `mesg`.
@@ -166,7 +166,7 @@ non-null Tcl interpreter with a non-empty result; otherwise, the error message i
 
 # See also
 
-[`TclTk.Core.unsafe_convert`](@ref) and [`TclTk.Core.unsafe_get_result`](@ref).
+[`TclTk.Impl.unsafe_convert`](@ref) and [`TclTk.Impl.unsafe_get_result`](@ref).
 
 """
 @noinline unsafe_error(interp::InterpPtr, mesg::AbstractString) =

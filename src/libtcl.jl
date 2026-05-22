@@ -47,7 +47,7 @@ end
 const FloatingPoint = Union{Irrational,Rational,AbstractFloat}
 
 """
-    TclTk.Core.NothingOr{T}
+    TclTk.Impl.NothingOr{T}
 
 Singleton type representing the union `Union{Nothing,T}` used to extract the, possibly
 empty, value of an object or result of a sub-command.
@@ -65,7 +65,7 @@ struct SubCommand{C,W}
 end
 
 """
-    TclTk.Core.FastString
+    TclTk.Impl.FastString
 
 Union of types of objects that can be converted into an UTF-8 `Cstring` by `ccall` without
 overheads. More specifically, for an instance `str` of this union, the following hold:
@@ -86,7 +86,7 @@ const FasterString = Union{#=Char,=# String, SubString{String}, Symbol}
 const Enumeration{T} = Union{Enum{T}, CEnum.Cenum{T}}
 
 """
-    TclTk.Core.Value
+    TclTk.Impl.Value
 
 Union of *extern* types (i.e. not defined by the `TclTk` package) that can be converted into
 a Tcl object and conversely.
@@ -202,7 +202,7 @@ function TclFreeObj(objPtr::Ptr{Tcl_Obj})
 end
 
 """
-    TclTk.Core.Tcl_GetRefCount(objptr) -> refcnt
+    TclTk.Impl.Tcl_GetRefCount(objptr) -> refcnt
 
 Return the current reference count of the Tcl object at address `objptr`.
 
@@ -214,7 +214,7 @@ This is not provided in `<tcl.h>` but is useful.
 
 # See also
 
-[`TclTk.Core.Tcl_IncrRefCount`](@ref) and [`TclTk.Core.Tcl_DecrRefCount`](@ref).
+[`TclTk.Impl.Tcl_IncrRefCount`](@ref) and [`TclTk.Impl.Tcl_DecrRefCount`](@ref).
 
 """
 function Tcl_GetRefCount(objPtr::Ptr{Tcl_Obj})
@@ -223,7 +223,7 @@ function Tcl_GetRefCount(objPtr::Ptr{Tcl_Obj})
 end
 
 """
-    TclTk.Core.Tcl_IncrRefCount(objptr) -> objptr
+    TclTk.Impl.Tcl_IncrRefCount(objptr) -> objptr
 
 Increment the reference count of the Tcl object given its pointer and return it.
 
@@ -235,7 +235,7 @@ This method emulates the `Tcl_IncrRefCount` macro defined in `<tcl.h>`.
 
 # See also
 
-[`TclTk.Core.Tcl_DecrRefCount`](@ref) and [`TclTk.Core.Tcl_GetRefCount`](@ref).
+[`TclTk.Impl.Tcl_DecrRefCount`](@ref) and [`TclTk.Impl.Tcl_GetRefCount`](@ref).
 
 """
 function Tcl_IncrRefCount(objPtr::Ptr{Tcl_Obj})
@@ -246,7 +246,7 @@ function Tcl_IncrRefCount(objPtr::Ptr{Tcl_Obj})
 end
 
 """
-    TclTk.Core.Tcl_DecrRefCount(objptr) -> refcnt
+    TclTk.Impl.Tcl_DecrRefCount(objptr) -> refcnt
 
 Decrement the reference count of the Tcl object given its pointer and return its new
 reference count. If `refcnt < 1` holds, the Tcl object has been released and `objptr` shall
@@ -260,7 +260,7 @@ This method emulates the `Tcl_DecrRefCount` macro defined in `<tcl.h>`.
 
 # See also
 
-[`TclTk.Core.Tcl_IncrRefCount`](@ref) and [`TclTk.Core.Tcl_GetRefCount`](@ref).
+[`TclTk.Impl.Tcl_IncrRefCount`](@ref) and [`TclTk.Impl.Tcl_GetRefCount`](@ref).
 
 """
 function Tcl_DecrRefCount(objPtr::Ptr{Tcl_Obj})

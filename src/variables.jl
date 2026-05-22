@@ -272,31 +272,33 @@ end
 
 function unsafe_getvar(::Type{T}, part1::Ptr{Tcl_Obj}, part2::Ptr{Tcl_Obj},
                        flags::Integer) where {T}
-    with_interpreter() do interp
-        value = @ccall libtcl.Tcl_ObjGetVar2(interp::Ptr{Tcl_Interp}, part1::Ptr{Tcl_Obj},
-                                             part2::Ptr{Tcl_Obj}, flags::Cint)::Ptr{Tcl_Obj}
+    result = with_interpreter() do interp
+        objptr = @ccall libtcl.Tcl_ObjGetVar2(interp::Ptr{Tcl_Interp}, part1::Ptr{Tcl_Obj},
+                                              part2::Ptr{Tcl_Obj}, flags::Cint)::Ptr{Tcl_Obj}
         if T <: _IsAssigned
-            return !isnull(value)
+            return !isnull(objptr)
         else
-            isnull(value) && throw_variable_error(interp, "get", part1, part2, flags)
-            return unsafe_convert(T, value)
+            isnull(objptr) && throw_variable_error(interp, "get", part1, part2, flags)
+            return unsafe_convert(T, objptr)
         end
+    end
+    if T <: _IsAssigned
+        return result::Bool
+    else
+        return result::T
     end
 end
 
 function unsafe_setvar(::Type{T}, part1::Ptr{Tcl_Obj}, part2::Ptr{Tcl_Obj},
                        value::Ptr{Tcl_Obj}, flags::Integer) where {T}
-    with_interpreter() do interp
+    result = with_interpreter() do interp
         newval = @ccall libtcl.Tcl_ObjSetVar2(interp::Ptr{Tcl_Interp}, part1::Ptr{Tcl_Obj},
                                               part2::Ptr{Tcl_Obj}, value::Ptr{Tcl_Interp},
                                               flags::Cint)::Ptr{Tcl_Obj}
         isnull(newval) && throw_variable_error(interp, "set", part1, part2, flags)
-        if T == Nothing
-            return nothing
-        else
-            return unsafe_convert(T, newval)
-        end
+        return (T == Nothing ? nothing : unsafe_convert(T, newval))
     end
+    return result::T
 end
 
 function unsafe_unsetvar(part1, part2, flags::Integer, nocomplain::Bool)
@@ -305,8 +307,8 @@ function unsafe_unsetvar(part1, part2, flags::Integer, nocomplain::Bool)
                                              part2::Cstring, flags::Cint)::TclStatus
         status == TCL_OK || nocomplain || throw_variable_error(
             interp, "unset", part1, part2, flags)
-        return nothing
     end
+    return nothing
 end
 
 @noinline function throw_variable_error(interp::Ptr{Tcl_Interp}, op::AbstractString,

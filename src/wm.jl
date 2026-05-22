@@ -1,30 +1,48 @@
 import TclTk: wm
 
-wm(cmd::Word, w::TkWidget, args...; kwds...) = wm(Nothing, w, args...; kwds...)
-function wm(::Type{T}, cmd::Word, w::TkWidget, args...; kwds...) where {T}
-    return exec(T, w.interp, :wm, cmd, w.path, args...; kwds...)
-end
-
-@eval const WM_COMMANDS = Tuple(sort!([
+# Sub-commands of Tk `wm` procedure, in alphabetical order.
+const WM_COMMANDS = (
     :aspect, :attributes, :client, :colormapwindows, :command, :deiconify, :focusmodel,
     :forget, :frame, :geometry, :grid, :group, :iconbadge, :iconbitmap, :iconify,
     :iconmask, :iconname, :iconphoto, :iconposition, :iconwindow, :manage, :maxsize,
     :minsize, :overrideredirect, :positionfrom, :protocol, :resizable, :sizefrom,
-    :stackorder, :state, :title, :transient, :withdraw,]))
+    :stackorder, :state, :title, :transient, :withdraw)
+
+"""
+    TclTk.wm(T=Nothing, cmd, w::TkWidget, args...; kwds...) -> res::T
+    wm.cmd(T=Nothing, w::TkWidget, args...; kwds...) -> res::T
+
+Interact with the window manager to query or control such things as the title for widget
+`w`, its geometry, etc. Argument `T` is the expected type for the result. With the syntax
+`wm.cmd(w, ...)` the result has a suitable default type that depends on `cmd`.
+
+The window manager command `cmd` is one of $("`" * join(WM_COMMANDS, "`, `", "`, or `") * "`").
+
+"""
+wm(cmd::Word, w::TkWidget, args...; kwds...) = wm(Nothing, cmd, w, args...; kwds...)
+function wm(::Type{T}, cmd::Word, w::TkWidget, args...; kwds...) where {T}
+    return tcl_exec(T, "::wm", cmd, w, args...; kwds...)
+end
 
 Base.propertynames(f::typeof(wm)) = WM_COMMANDS
 
+# Implement sub-commands for `wm` as properties.
 @inline Base.getproperty(f::typeof(wm), key::Symbol) = _getproperty(f, Val(key))
 _getproperty(f::typeof(wm), ::Val{key}) where {key} = throw(KeyError(key))
 
 for cmd in WM_COMMANDS
     func = Symbol("wm_", cmd)
     @eval begin
+        # Associate property with function implementing the sub-command.
         _getproperty(f::typeof(wm), ::$(Val{cmd})) = $func
+
+        # Implement sub-command function when return type is specified by caller.
         $func(::Type{T}, w::TkWidget, args...; kwds...) where {T} =
             wm(T, $(QuoteNode(cmd)), w, args...; kwds...)
     end
 end
+
+# The sub-commands of `wm` with suitable default return type depending on argument types.
 
 wm_aspect(w::TkWidget) = wm_aspect(TclObj, w)
 wm_aspect(w::TkWidget, minNum, minDen, maxNum, maxDen) =

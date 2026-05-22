@@ -425,7 +425,7 @@ function unsafe_eval_result(::Type{T},
         if T === Nothing
             return nothing
         else
-            return unsafe_convert(T, result)
+            return unsafe_convert(T, result)::T
         end
     elseif status == TCL_ERROR
         mesg = unsafe_string(result)

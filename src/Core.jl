@@ -139,9 +139,10 @@ include("interp.jl")
 include("variables.jl")
 include("callbacks.jl")
 include("colors.jl")
+include("winfo.jl")
+include("wm.jl")
 include("widgets.jl")
 include("images.jl")
-#include("wm.jl")
 
 function __init__()
     # Check that package was built with the same version as the dynamic library.

@@ -51,7 +51,7 @@ function TclCallback(func::Function, name::Name = callback_default_name())
                 clientdata::ClientData, deleteproc::Ptr{Tcl_CmdDeleteProc})::Tcl_Command
             isnull(token) && tcl_error(unsafe_get_result(String, interp))
             return token
-        end
+        end::Tcl_Command
         setfield!(callback, :token, token)
     catch
         release(callback)
@@ -146,7 +146,7 @@ function set_command_result(interp::InterpPtr, (status,result)::Tuple{TclStatus,
 end
 
 """
-    TclTk.deletecommand(name) -> bool
+    TclTk.deletecommand(name) -> bool::Bool
 
 Delete command named `name` in shared Tcl interpreter and return whether the command existed
 before the call.
@@ -156,13 +156,13 @@ function deletecommand(name::Name)
     GC.@preserve name begin
         result = with_interpreter() do interp
             @ccall libtcl.Tcl_DeleteCommand(interp::Ptr{Tcl_Interp}, name::Cstring)::Cint
-        end
-        return iszero(result)
+        end::Cint
+        return iszero(result)::Bool
     end
 end
 
 """
-    TclTk.deletecommand(callback::TclCallback) -> bool
+    TclTk.deletecommand(callback::TclCallback) -> bool::Bool
 
 Delete the Tcl command of `callback` from its interpreter and return whether the command
 existed before the call.
@@ -180,8 +180,8 @@ function deletecommand(callback::TclCallback)
         result = with_interpreter() do interp
             @ccall libtcl.Tcl_DeleteCommandFromToken(interp::Ptr{Tcl_Interp},
                                                      token::Tcl_Command)::Cint
-        end
-        return iszero(result)
+        end::Cint
+        return iszero(result)::Bool
     end
 end
 

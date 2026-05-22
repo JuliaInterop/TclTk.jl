@@ -242,152 +242,6 @@ function TkWidget(path::Name)
     return _T(path)
 end
 
-"""
-    TclTk.wm(T=Nothing, cmd, w::TkWidget, args...; kwds...) -> res::T
-    wm.cmd(T=Nothing, w::TkWidget, args...; kwds...) -> res::T
-
-Interact with the window manager to query or control such things as the title for widget
-`w`, its geometry, etc. Argument `T` is the expected type for the result. With the syntax
-`wm.cmd(w, ...)` the result has a suitable default type that depends on `cmd`.
-
-The window manager command `cmd` is one of `aspect`, `attributes`, `client`,
-`colormapwindows`, `command`, `deiconify`, `focusmodel`, `forget`, `frame`, `geometry`,
-`grid`, `group`, `iconbitmap`, `iconify`, `iconmask`, `iconname`, `iconphoto`,
-`iconposition`, `iconwindow`, `manage`, `maxsize`, `minsize`, `overrideredirect`,
-`positionfrom`, `protocol`, `resizable`, `sizefrom`, `stackorder`, `state`, `title`,
-`transient`, or `withdraw`.
-
-"""
-wm(cmd::Word, w::TkWidget, args...; kwds...) = wm(Nothing, cmd, w, args...; kwds...)
-wm(::Type{T}, cmd::Word, w::TkWidget, args...; kwds...) where {T} =
-    tcl_exec(T, "::wm", cmd, w, args...; kwds...)
-
-# TODO Implement sub-commands for `wm` as for `winfo`.
-
-# Implement sub-commands for `wm`.
-Base.getproperty(f::typeof(wm), cmd::Symbol) = SubCommand{cmd,typeof(wm)}(f)
-(f::SubCommand{cmd,typeof(wm)})(::Type{T}, args...; kwds...) where {cmd,T} =
-    wm(T, cmd, args...; kwds...)
-(f::SubCommand{cmd,typeof(wm)})(args...; kwds...) where {cmd} =
-    wm(Nothing, cmd, args...; kwds...)
-
-"""
-    TclTk.winfo(T=TclObj, what, args...) -> res::T
-
-Return information `what` related to Tk window(s) as a value of type `T`.
-
-"""
-winfo(what::Word, args...) = winfo(TclObj, what, args...)
-winfo(::Type{T}, what::Word, args...) where {T} = tcl_exec(T, "::winfo", what, args...)
-
-"""
-    TclTk.winfo(T=TclObj, w::TkWidget, what) -> res::T
-
-Return information `what` related to widget `w` as a value of type `T`.
-
-"""
-winfo(w::TkWidget, what::Word) = winfo(what, w)
-winfo(what::Word, w::TkWidget) = winfo(TclObj, what, w)
-winfo(::Type{T}, w::TkWidget, what::Word) where {T} = winfo(T, what, w)
-
-winfo_exists(w::Union{TkWidget,Name}) = winfo(Bool, :exists, w)
-winfo_parent(w::Union{TkWidget,Name}) = winfo(String, :parent, w)
-winfo_name(w::Union{TkWidget,Name}) = winfo(String, :name, w)
-
-winfo_class(w::TkWidget) = winfo_class(w.path)
-function winfo_class(path::Name)
-    # `winfo class .` yields the name of the application which is not what we want. So, we
-    # must specifically consider the case of the "." window.
-    return isrootwidget(path) ? :Toplevel : winfo(Symbol, :class, path)
-    # TODO for Tix widgets, we may instead use:
-    # class = string(tcl_exec(path, :configure, "-class")[4])
-end
-
-winfo_interps(w::Union{TkWidget,Name}) = winfo(Vector{String}, :interps, "-displayof", w)
-
-winfo_visualsavailable(w::Union{TkWidget,Name}) =
-    winfo(Vector{Tuple{Symbol,Int}}, :visualsavailable, w)
-
-winfo_visualsavailable_includeids(w::Union{TkWidget,Name}) =
-     winfo(Vector{Tuple{Symbol,Int,UInt32}}, :visualsavailable, w, :includeids)
-
-winfo_atom(w::Union{TkWidget,Name}) = PrefixedFunction(winfo_atom, w)
-winfo_atom(w::Union{TkWidget,Name}, name) = winfo(UInt32, :atom, "-displayof", w, name)
-
-winfo_atomname(w::Union{TkWidget,Name}) = PrefixedFunction(winfo_atomname, w)
-winfo_atomname(w::Union{TkWidget,Name}, id) = winfo(String, :atomname, "-displayof", w, id)
-
-winfo_containing(w::Union{TkWidget,Name}) = PrefixedFunction(winfo_containing, w)
-winfo_containing(w::Union{TkWidget,Name}, rootx, rooty) =
-     winfo(String, :containing, "-displayof", w, rootx, rooty)
-
-winfo_fpixels(w::Union{TkWidget,Name}) = PrefixedFunction(winfo_fpixels, w)
-winfo_fpixels(w::Union{TkWidget,Name}, number) = winfo(Float64, :fpixels, w, number)
-
-winfo_pathname(w::Union{TkWidget,Name}) = PrefixedFunction(winfo_pathname, w)
-winfo_pathname(w::Union{TkWidget,Name}, id) = winfo(String, :pathname, "-displayof", w, id)
-
-winfo_pixels(w::Union{TkWidget,Name}) = PrefixedFunction(winfo_pixels, w)
-winfo_pixels(w::Union{TkWidget,Name}, number) = winfo(Int, :pixels, w, number)
-
-winfo_rgb(w::Union{TkWidget,Name}) = PrefixedFunction(winfo_rgb, w)
-winfo_rgb(w::Union{TkWidget,Name}, color) = reinterpret_as_colorant(
-    winfo(NTuple{3,UInt16}, :rgb, w, color))
-
-const WINFO = (
-    :atom             => (false, typeof(winfo_atom)),
-    :atomname         => (false, typeof(winfo_atomname)),
-    :cells            => (true,  Int),
-    :children         => (true,  Vector{String}), # TODO iterable list of strings
-    :class            => (true,  typeof(winfo_class)),
-    :colormapfull     => (true,  Bool),
-    :containing       => (false, typeof(winfo_containing)),
-    :depth            => (true,  Int),
-    :exists           => (true,  Bool),
-    :fpixels          => (false, typeof(winfo_fpixels)),
-    :geometry         => (true,  String), # TODO parse "widthxheight+x+y" in pixels
-    :height           => (true,  Int),
-    :id               => (true,  UInt),
-    :interps          => (true,  typeof(winfo_interps)),
-    :ismapped         => (true,  Bool),
-    :manager          => (true,  Symbol),
-    :name             => (true,  String),
-    :parent           => (true,  String),
-    :path             => (true,  typeof(getfield)),
-    :pathname         => (false, typeof(winfo_pathname)),
-    :pixels           => (false, typeof(winfo_pixels)),
-    :pointerx         => (true,  Int),
-    :pointerxy        => (true,  NTuple{2,Int}),
-    :pointery         => (true,  Int),
-    :reqheight        => (true,  Int),
-    :reqwidth         => (true,  Int),
-    :rgb              => (false, typeof(winfo_rgb)),
-    :rootx            => (true,  Int),
-    :rooty            => (true,  Int),
-    :screen           => (true,  String),
-    :screencells      => (true,  Int),
-    :screendepth      => (true,  Int),
-    :screenheight     => (true,  Int),
-    :screenmmheight   => (true,  Float64), # NOTE here float seems more appropriate than integer
-    :screenmmwidth    => (true,  Float64), # NOTE  here float seems more appropriate than integer
-    :screenvisual     => (true,  Symbol),
-    :screenwidth      => (true,  Int),
-    :server           => (true,  String),
-    :toplevel         => (true,  String),
-    :viewable         => (true,  Bool),
-    :visual           => (true,  Symbol),
-    :visualid         => (true,  UInt32),
-    :visualsavailable => (true,  typeof(winfo_visualsavailable)),
-    :visualsavailable_includeids => (true,  typeof(winfo_visualsavailable_includeids)),
-    :vrootheight      => (true,  Int),
-    :vrootwidth       => (true,  Int),
-    :vrootx           => (true,  Int),
-    :vrooty           => (true,  Int),
-    :width            => (true,  Int),
-    :x                => (true,  Int),
-    :y                => (true,  Int),
-)
-
 @inline Base.getproperty(w::TkWidget, key::Symbol) = _getproperty(w, Val(key))
 
 let props = Symbol[]
@@ -421,11 +275,10 @@ end
 
 # Sub-commands for top-level widgets.
 for cmd in (:iconname, :title)
+    wm_cmd = Symbol("wm_",cmd)
     @eval begin
-        (f::SubCommand{$(QuoteNode(cmd)),Toplevel})() =
-            tcl_exec(String, "::wm", $(String(cmd)), f.caller)
-        (f::SubCommand{$(QuoteNode(cmd)),Toplevel})(str::AbstractString) =
-            tcl_exec(Nothing, "::wm", $(String(cmd)), f.caller, str)
+        (f::SubCommand{$(QuoteNode(cmd)),Toplevel})() = $wm_cmd(f.caller)
+        (f::SubCommand{$(QuoteNode(cmd)),Toplevel})(str::AbstractString) = $wm_cmd(f.caller, str)
     end
 end
 

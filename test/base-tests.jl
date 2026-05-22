@@ -1,7 +1,8 @@
 module TclBaseTests
 
-using TclTk
 using Colors
+using Neutrals
+using TclTk
 using Test
 
 # We need some irrational constants.
@@ -486,6 +487,17 @@ end
     @test @inferred(length(wd)) == length(wf)
     @test all([wd[i] == TclObj(wf[i]) for i in 1:length(wf)])
 
+    # `list` vs. `concat`.
+    t = (1, "a b {c d}", 0)
+    x = @inferred tcl_list(t...)
+    y = @inferred tcl_concat(t...)
+    @test x isa TclObj
+    @test x.type == :list
+    @test length(x) == 3
+    @test !isempty(x)
+    @test y isa TclObj
+    @test length(y) == 5
+
     # List to vectors.
     t = (-1:3...,)
     o = @inferred TclObj(t)
@@ -499,168 +511,129 @@ end
 
 end
 
-@testset "Tcl Interpreters" begin
+@testset "Tcl Scripts" begin
 
-    # Lists.
-    t = (1, "a b {c d}", 0)
-    x = @inferred tcl_list(t...)
-    y = @inferred tcl_concat(t...)
-    @test x isa TclObj
-    @test x.type == :list
-    @test length(x) == 3
-    @test !isempty(x)
-    @test y isa TclObj
-    @test length(y) == 5
-
-    # Global variables.
+    # Set, unset, increment, etc. a global variable.
     name, val = "some_name", -12345
-    private[name] = val
-    @test haskey(private, name)
-    @test (@inferred private[name]) isa TclObj
-    @test TclObj(val) == @inferred private[name]
-    delete!(private, name)
-    @test !haskey(private, name)
+    T = typeof(val)
+    @inferred tcl_eval("::unset -nocomplain -- $name") # make sure variable does not exists
+    @test @inferred(tcl_eval(Bool, "::info exists $name")) === false
+    @test @inferred(tcl_eval(Bool, "::info exists", name)) === false
+    @test @inferred(tcl_exec(Bool, "::info", :exists, name)) === false
+    @test @inferred(tcl_exec(T, "::set", name, val)) === val
+    @test @inferred(tcl_eval(Bool, "::info exists $name")) === true
+    @test @inferred(tcl_eval(Bool, "::info exists", name)) === true
+    @test @inferred(tcl_exec(Bool, "::info", :exists, name)) === true
+    val += 𝟙; @test val isa T
+    @test @inferred(tcl_exec(T, "::incr", name)) === val
+    val += 𝟙; @test val isa T
+    @test @inferred(tcl_eval(T, "::incr $name")) === val
+    val -= 𝟙; @test val isa T
+    @test @inferred(tcl_exec(T, "::incr", name, -1)) === val
+    val -= 𝟙; @test val isa T
+    @test @inferred(tcl_eval(T, "::incr $name -1")) === val
+    @test @inferred(tcl_exec(T, "::set", name, val)) === val
+    @test @inferred(tcl_exec(Nothing, "::unset", name)) === nothing
+    @test @inferred(tcl_exec(Bool, "::info", :exists, name)) === false
+    @test_throws TclError tcl_exec("::unset", name)
+    @test @inferred(tcl_exec(Tuple{TclStatus,Nothing}, "::unset", name)) === (TCL_ERROR, nothing)
+    status, mesg = @inferred(tcl_exec(Tuple{TclStatus,String}, "::unset", name))
+    @test mesg == "can't unset \"$name\": no such variable"
+
+    # Play with expressions.
+    @test @inferred(tcl_eval(TclObj, "::expr {$val - 42}")) == TclObj(val - 42)
+    @test @inferred(tcl_exec(TclObj, "::expr", (val, :-, 42))) == TclObj(val - 42)
+    @test @inferred(tcl_exec(TclObj, "::expr", tcl_list(val, "-", 42))) == TclObj(val - 42)
+    @test @inferred(tcl_eval(Tuple{TclStatus,Int}, "::expr {2*$val + 3}")) == (TCL_OK, 2*val + 3)
+    @test @inferred(tcl_exec(Tuple{TclStatus,Int}, "::expr", (2, "*", val, "+", 3))) == (TCL_OK, 2*val + 3)
+
+    #=
+    @inferred tcl_setvar(name, val)
+
+    @test @inferred(tcl_setvar(name, val)) isa Nothing
+    @test @inferred(tcl_getvar(name)) isa TclObj
+    @test TclObj(val) == @inferred tcl_getvar(name)
+    @test @inferred(tcl_isassigned(name))
+    tcl_unsetvar(name)
+    @test !@inferred(tcl_isassigned(name))
     name, val = "some_other_name", -13/4
-    private[name] = val
-    @test haskey(private, name)
-    @test TclObj(val) == @inferred private[name]
-    private[name] = unset
-    @test !haskey(private, name)
-    delete!(private, name)
+    @test @inferred(tcl_setvar(name, val)) isa Nothing
+    @test @inferred(tcl_getvar(name)) isa TclObj
+    @test TclObj(val) == @inferred tcl_getvar(name)
+    @test @inferred(tcl_isassigned(name))
+    @inferred tcl_unsetvar(name)
+    @test !@inferred(tcl_isassigned(name))
 
     # Evaluation of scripts.
     name, val = "globvar", 4321
-    @test TclObj(val) == @inferred private.eval(TclObj, "set $name $val")
-    @test haskey(private, name)
-    @test TclObj(val) == @inferred private[name]
-    delete!(private, name)
-    @test_throws TclError @inferred private.eval("set $name")
-    @test TCL_ERROR === @inferred private.eval(TclStatus, "set $name")
+    @test TclObj(val) == @inferred tcl_eval(TclObj, "set $name $val")
+    @test @inferred(tcl_isassigned(name))
+    @test TclObj(val) == @inferred tcl_getvar(name)
+    @test @inferred(tcl_unsetvar(name)) isa Nothing
+    @test_throws TclError @inferred tcl_eval("set $name")
+    @test (TCL_ERROR, nothing) === @inferred tcl_eval(Tuple{TclStatus,Nothing}, "set $name")
 
     # Execution of commands.
     name, val = "arr(1)", 789
-    @test TclObj(val) == @inferred private.exec(TclObj, :set, name, val)
-    @test haskey(private, name)
-    @test TclObj(val) == @inferred private[name]
-    delete!(private, name)
-    @test_throws TclError private.exec(:set, name)
-    @test TCL_ERROR === @inferred private.exec(TclStatus, "set", name)
-    @test TclObj(val) == @inferred private(TclObj, :set, name, val)
-    @test haskey(private, name)
-    @test TclObj(val) == @inferred private[name]
-    delete!(private, name)
-    @test_throws TclError private(:set, name)
-    @test TCL_ERROR === @inferred private(TclStatus, "set", name)
-    @test_throws TclError private(:continue)
-    @test_throws TclError private("break")
+    T = typeof(val)
+    @test @inferred(tcl_unsetvar("arr"; nocomplain=true)) === nothing
+    @test !@inferred(tcl_isassigned(name))
+    @test_throws TclError tcl_getvar(name)
+    @test_throws TclError tcl_exec("::set", name)
+    @test_throws TclError tcl_eval("::set $name")
+    @test (TCL_ERROR, nothing) === @inferred tcl_exec(Union{TclStatus,Nothing}, "::set", name)
+    @test (TCL_ERROR, nothing) === @inferred tcl_eval(Union{TclStatus,Nothing}, "::set $name")
+    @test TclObj(val) == @inferred tcl_exec(TclObj, "::set", name, val)
+    @test @inferred(tcl_isassigned(name))
+    @test TclObj(val) == @inferred tcl_getvar(name)
+    @test TclObj(val) == @inferred tcl_exec(TclObj, "::set", name)
+    @test TclObj(val) == @inferred tcl_eval(TclObj, "::set $name")
+    @test @inferred(tcl_unsetvar(name)) === nothing
+    @test !@inferred(tcl_isassigned(name))
+    @test_throws TclError tcl_getvar(name)
+    @test_throws TclError tcl_exec("::set", name)
+    @test_throws TclError tcl_eval("::set $name")
+    @test (TCL_ERROR, nothing) === @inferred tcl_exec(Union{TclStatus,Nothing}, "::set", name)
+    @test (TCL_ERROR, nothing) === @inferred tcl_eval(Union{TclStatus,Nothing}, "::set $name")
+    @test TclObj(val) == @inferred tcl_eval(TclObj, "::set $name $val")
+    @test @inferred(tcl_isassigned(name))
+    @test TclObj(val) == @inferred tcl_getvar(name)
+    @test (TCL_OK, nothing) === @inferred tcl_exec(Union{TclStatus,Nothing}, "::unset", name)
+    @test !@inferred(tcl_isassigned(name))
+    @test_throws TclError tcl_getvar(name)
+    @test_throws TclError tcl_exec("::set", name)
+    @test (TCL_ERROR, nothing) === @inferred tcl_exec(Union{TclStatus,Nothing}, "::set", name)
+    @test (TCL_ERROR, nothing) === @inferred tcl_eval(Union{TclStatus,Nothing}, "::set $name")
+    @test_throws TclError tcl_exec(:continue)
+    @test_throws TclError tcl_exec("break")
 
     # Options and enumeration.
-    @test TCL_OK === @inferred private(TclStatus, :return, :code => TCL_OK)
-    @test TCL_ERROR === @inferred private(TclStatus, :return, :code => TCL_ERROR)
-    @test apple === @inferred private(Fruit, :set, "fruit", apple)
-    @test kiwi === @inferred private.eval(Fruit, "set fruit $(Integer(kiwi))")
-
-    # Fetching of values.
-    t = (false, -7, 1.5, "text", ('a', 2))
-    x = @inferred TclObj(t)
-    interp = TclInterp()
-    @test length(x) == length(t)
-    @test length(x[end]) == 2
-    #
-    @test @inferred(convert(typeof(t[1]), x[1])) === t[1]
-    @test @inferred(fetch(typeof(t[1]), x, 1)) === t[1]
-    @test interp.fetch(typeof(t[1]), x, 1) === t[1]
-    #
-    @test @inferred(convert(typeof(t[2]), x[2])) === t[2]
-    @test @inferred(fetch(typeof(t[2]), x, 2)) === t[2]
-    @test interp.fetch(typeof(t[2]), x, 2) === t[2]
-    #
-    @test @inferred(convert(typeof(t[3]), x[3])) === t[3]
-    @test @inferred(fetch(typeof(t[3]), x, 3)) === t[3]
-    @test interp.fetch(typeof(t[3]), x, 3) === t[3]
-    #
-    @test @inferred(convert(typeof(t[4]), x[4])) == t[4]
-    @test @inferred(fetch(typeof(t[4]), x, 4)) == t[4]
-    @test interp.fetch(typeof(t[4]), x, 4) == t[4]
-    #
-    @test @inferred(convert(typeof(t[5]), x[5])) === t[5]
-    @test @inferred(fetch(typeof(t[5]), x, 5)) === t[5]
-    @test interp.fetch(typeof(t[5]), x, 5) === t[5]
-    #
-    inds = [4,3,5]
-    s = t[inds]
-    @test @inferred(convert(typeof(s), x[inds])) === s
-    @test @inferred(fetch(typeof(s), x, [inds...,])) === s
-    @test @inferred(fetch(typeof(s), x, (inds...,))) === s
-    @test interp.fetch(typeof(s), x, [inds...,]) === s
-    @test interp.fetch(typeof(s), x, (inds...,)) === s
-    #
-    @test @inferred(convert(typeof(t), x)) == t
-    @test @inferred(fetch(typeof(t), x)) == t
-    @test @inferred(fetch(typeof(t), x, :)) == t
-    @test interp.fetch(typeof(t), x) == t
-    @test interp.fetch(typeof(t), x, :) == t
-    #
-    s = (UInt8(t[1]), Int16(t[2]), Float32(t[3]), Symbol(t[4]))
-    r = 1:4
-    @test @inferred(convert(typeof(s), x[r])) === s
-    @test @inferred(convert(typeof(s), x[[true,true,true,true,false]])) === s
-    @test @inferred(fetch(typeof(s), x, r)) === s
-    @test @inferred(fetch(typeof(s), x, (r...,))) === s
-    @test @inferred(fetch(typeof(s), x, [r...,])) === s
-    @test interp.fetch(typeof(s), x, r) === s
-    @test interp.fetch(typeof(s), x, (r...,)) === s
-    @test interp.fetch(typeof(s), x, [r...,]) === s
-
-    # Explicitly delete private interpreter to call finalizer.
-    private = 0
-    GC.gc()
-end
-
-@testset "Events" begin
-    # Make sure event handler is not running.
-    TclTk.isrunning() && TclTk.suspend()
-    @test (@inferred TclTk.isrunning()) === false
-    # Create some delayed task.
-    TclTk.eval("set jl_counter 0")
-    id = TclTk.exec(TclObj, :after, 1, "incr jl_counter")
-    sleep(0.1)
-    @test TclTk.eval(Int, "set jl_counter") === 0
-    TclTk.resume()
-    @test (@inferred TclTk.isrunning()) === true
-    sleep(0.1) # sleep for a while so that events can be processed
-    @test TclTk.eval(Int, "set jl_counter") === 1
-    TclTk.suspend()
-    @test (@inferred TclTk.isrunning()) === false
+    @test (TCL_OK, nothing) === @inferred tcl_exec(Union{TclStatus,Nothing}, :return, :code => TCL_OK)
+    @test (TCL_ERROR, nothing) === @inferred tcl_exec(Union{TclStatus,Nothing}, :return, :code => TCL_ERROR)
+    @test apple === @inferred tcl_exec(Fruit, :set, "fruit", apple)
+    @test kiwi === @inferred tcl_eval(Fruit, "set fruit $(Integer(kiwi))")
+    =#
 end
 
 @testset "Tcl Variables" begin
-    # Get default interpreter.
-    interp = @inferred TclInterp()
-
     # Accessing or deleting a non-existing variable is an error.
-    tcl_unsetvar("non_existing_variable"; nocomplain=true)
-    tcl_unsetvar("non_existing_array"; nocomplain=true)
+    @inferred tcl_unsetvar("non_existing_variable"; nocomplain=true)
+    @inferred tcl_unsetvar("non_existing_array"; nocomplain=true)
     @test_throws TclError tcl_getvar("non_existing_variable")
-    @test_throws TclError tcl_getvar("non_existing_variable"; flags=TCL_GLOBAL_ONLY)
     @test_throws TclError tcl_getvar(:non_existing_variable)
-    @test_throws TclError tcl_getvar(:non_existing_variable; flags=TCL_GLOBAL_ONLY)
     @test_throws TclError tcl_getvar(("non_existing_array", 1))
-    @test_throws TclError tcl_getvar(("non_existing_array", 1); flags=TCL_GLOBAL_ONLY)
     @test_throws TclError tcl_getvar(:non_existing_variable)
-    @test_throws TclError tcl_getvar(:non_existing_variable; flags=TCL_GLOBAL_ONLY)
     @test_throws TclError tcl_unsetvar(:non_existing_variable)
-    @test_throws TclError tcl_unsetvar(:non_existing_variable; flags=TCL_GLOBAL_ONLY)
 
     # Manage to make any operation on a variable fail. NOTE Errors in `unset` traces are
     # ignored.
     name = "some_name"
-    for (op, trace) in TclTk.exec(TclObj, :trace, :info, :variable, name)
+    for (op, trace) in @inferred tcl_exec(TclObj, :trace, :info, :variable, name)
         # Remove all existing traces.
-        TclTk.exec(:trace, :remove, :variable, name, op, trace)
+        tcl_exec(:trace, :remove, :variable, name, op, trace)
     end
     trace = "forbidden_operation_on_variable"
-    TclTk.eval("""
+    @inferred tcl_eval("""
 proc $trace {name1 name2 op} {
     if {\$name2 eq ""} {
         set name "\$name1"
@@ -670,17 +643,12 @@ proc $trace {name1 name2 op} {
     error "attempt to \$op variable \\"\$name\\""
 }
 """)
-    tcl_setvar(name, "some_value")
-    TclTk.exec(:trace, :add, :variable, name, :read, trace)
+    @inferred tcl_setvar(name, "some_value")
+    @inferred tcl_exec(:trace, :add, :variable, name, :read, trace)
     @test_throws TclError tcl_getvar(name)
-    TclTk.exec(:trace, :add, :variable, name, :write, trace)
+    @inferred tcl_exec(:trace, :add, :variable, name, :write, trace)
     @test_throws TclError tcl_setvar(name, "some_other_value")
-    tcl_unsetvar(name) # this also deletes all traces
-
-    @test_deprecated tcl_setvar("some_name", "some_value")
-    @test interp["some_name"] == "some_value"
-    @test_deprecated tcl_unsetvar("some_name")
-    @test !haskey(interp, "some_name")
+    @inferred tcl_unsetvar(name) # this also deletes all traces
 
     for (name, value) in (("a", 42),
                           ("1", 1),
@@ -696,146 +664,145 @@ proc $trace {name1 name2 op} {
 
         # First unset variable.
         if name isa Tuple
-            @inferred TclTk.exec(TclStatus, "array", "unset", first(name))
+            @inferred tcl_exec(Tuple{TclStatus,Nothing}, "array", "unset", first(name))
         else
-            @inferred TclTk.exec(TclStatus, "array", "unset", name)
+            @inferred tcl_exec(Tuple{TclStatus,Nothing}, "array", "unset", name)
         end
-        @inferred TclTk.exec(TclStatus, "unset", "-nocomplain", name)
+        @inferred tcl_exec(Tuple{TclStatus,Nothing}, "unset", "-nocomplain", name)
 
-        # Symbolic variable name.
-        key = name isa Tuple ? map(Symbol, name) : Symbol(name)
-
-        # Set variable.
+        # Basic operations.
+        varname = (name isa Tuple ? "$(name[1])($(name[2]))" : name)
+        quotedname = tcl_quote_string(varname) # quoted name for scripts
+        T =
+        obj = @inferred TclObj(value)
+        @test @inferred(tcl_isassigned(name)) === false
+        @test @inferred(tcl_setvar(name, value)) === nothing
+        @test @inferred(tcl_isassigned(name)) === true
+        x = @inferred(tcl_getvar(TclObj, name))
+        @test x isa TclObj
+        @test x == obj
         if name isa Tuple
-            @test_deprecated tcl_setvar(name..., value)
-            @test_deprecated tcl_unsetvar(name...)
-        end
-        @test nothing === @inferred tcl_setvar(name, value)
-        obj = @inferred tcl_setvar(TclObj, name, value)
-        @test obj isa TclObj
-        @test obj == TclObj(value)
-
-        # Get variable.
-        T = typeof(value)
-        obj = @inferred tcl_getvar(name)
-        @test obj isa TclObj
-        @test obj == @inferred interp[name]
-        @test obj == @inferred interp[key]
-        if name isa Tuple
+            # Check that variable with array name is the same.
             part1, part2 = name
-            x = @inferred interp["$(part1)($(part2))"]
-            @test x isa TclObj
-            @test obj == x
-            y = @test_deprecated tcl_getvar(part1, part2)
+            @test @inferred(tcl_isassigned("$(part1)($(part2))")) === true
+            y = @inferred tcl_getvar(TclObj, "$(part1)($(part2))")
             @test y isa TclObj
-            @test obj == y
+            @test y == obj
+            z = @inferred tcl_eval(TclObj, "::set $quotedname")
+            @test z isa TclObj
+            @test z == obj
         end
-        if value isa Union{String,Integer}
+        if value isa Union{String,Real}
+            T = value isa Union{String,Integer,AbstractFloat} ? typeof(value) : Float64
             x = @inferred tcl_getvar(T, name)
             @test x isa T
-            @test value == x
-            y = @inferred interp[T, name]
+            if T <: AbstractFloat
+                @test x ≈ value
+            else
+                @test x == value
+            end
+            y = @inferred tcl_eval(T, "::set $quotedname")
             @test y isa T
-            @test value == y
-        elseif value isa AbstractFloat
-            x = @inferred tcl_getvar(T, name)
-            @test x isa T
-            @test value ≈ x
-            y = @inferred interp[T, name]
-            @test y isa T
-            @test value ≈ y
-            @test x == y
+            if T <: AbstractFloat
+                @test y ≈ value
+            else
+                @test y == value
+            end
+            if name isa Tuple
+                z = @inferred tcl_getvar(T, varname)
+                @test z isa T
+                if T <: AbstractFloat
+                    @test z ≈ value
+                else
+                    @test z == value
+                end
+            end
         end
-
-        # Test existence and delete variable.
-        @test tcl_isassigned(name)
-        @test haskey(interp, name)
-        @test haskey(interp, key)
-        tcl_unsetvar(name)
-        @test !tcl_isassigned(name)
-        @test !haskey(interp, name)
-        @test !haskey(interp, key)
-
-        # Delete with `delete!`.
-        interp[name] = value
-        @test haskey(interp, name)
-        delete!(interp, name)
-        @test !haskey(interp, name)
-
-        # Delete with `unset`.
-        interp[name] = value
-        @test haskey(interp, name)
-        interp[name] = unset
-        @test !haskey(interp, name)
-
-        # Delete with `tcl_setvar` and `unset`.
-        interp[name] = value
-        @test haskey(interp, name)
-        @test nothing === @inferred tcl_setvar(interp, name, unset)
-        @test !haskey(interp, name)
+        @test @inferred(tcl_unsetvar(name)) === nothing
+        @test @inferred(tcl_isassigned(name)) === false
+        x = @inferred(tcl_setvar(TclObj, name, value))
+        @test @inferred(tcl_isassigned(name)) === true
+        @test x isa TclObj
+        @test x == obj
+        @inferred tcl_setvar(name, unset)
+        @test @inferred(tcl_isassigned(name)) === false
+        if name isa Tuple
+            # Set variable with its array name.
+            part1, part2 = name
+            @test @inferred(tcl_isassigned("$(part1)($(part2))")) === false
+            @test @inferred(tcl_setvar("$(part1)($(part2))", value)) === nothing
+            @test @inferred(tcl_isassigned("$(part1)($(part2))")) === true
+            @test @inferred(tcl_isassigned(name)) === true
+            x = @inferred(tcl_getvar(TclObj, name))
+            @test x isa TclObj
+            @test x == obj
+            y = @inferred tcl_getvar(TclObj, "$(part1)($(part2))")
+            @test y isa TclObj
+            @test y == obj
+            z = @inferred tcl_eval(TclObj, "::set $quotedname")
+            @test z isa TclObj
+            @test z == obj
+            @test @inferred(tcl_unsetvar("$(part1)($(part2))")) === nothing
+            @test @inferred(tcl_isassigned("$(part1)($(part2))")) === false
+            @test @inferred(tcl_isassigned(name)) === false
+        end
 
         # Use a Tcl object as the variable name.
-        if !(name isa Tuple)
-            key = @inferred TclObj(name)
-            val = @inferred TclObj(value)
-            interp[key] = val
-            @test haskey(interp, key)
-            obj = @inferred interp[key]
-            @test obj isa TclObj
-            @test obj == val
-            obj = @inferred tcl_getvar(interp, key)
-            @test obj isa TclObj
-            @test obj == val
-            interp[key] = unset
-            @test !haskey(interp, key)
-            @test nothing === @inferred tcl_setvar(interp, key, val)
-            @test haskey(interp, key)
-            @test val == @inferred interp[key]
-            @test nothing === @inferred tcl_setvar(interp, key, unset)
-            @test !haskey(interp, key)
-        end
+        key = @inferred TclObj(varname)
+        val = @inferred TclObj(value)
+        @test @inferred(tcl_isassigned(key)) === false
+        @test @inferred(tcl_isassigned(name)) === false
+        @test @inferred(tcl_setvar(key, val)) === nothing
+        @test @inferred(tcl_isassigned(key)) === true
+        @test @inferred(tcl_isassigned(name)) === true
+        x = @inferred(tcl_getvar(TclObj, key))
+        @test x isa TclObj
+        @test x == val
+        y = @inferred(tcl_getvar(TclObj, name))
+        @test y isa TclObj
+        @test y == val
+        @test @inferred(tcl_unsetvar(key)) === nothing
+        @test @inferred(tcl_isassigned(key)) === false
+        @test @inferred(tcl_isassigned(name)) === false
     end
 
 end
 
 const callback_counter = Ref{Int}(0)
 
-function count_callback(interp::TclInterp, args::TclObj)
+function count_callback(args::TclObj)
     global callback_counter
     callback_counter[] += 1
 end
 
-function other_count_callback(interp::TclInterp, args::TclObj)
+function other_count_callback(args::TclObj)
     global callback_counter
     callback_counter[] += 1
     return nothing
 end
 
-function yet_another_count_callback(interp::TclInterp, args::TclObj)
+function yet_another_count_callback(args::TclObj)
     global callback_counter
     callback_counter[] += 1
     return TCL_OK
 end
 
 callback_arguments = nothing
-function simple_callback(interp::TclInterp, args::TclObj)
+function simple_callback(args::TclObj)
     global callback_arguments
     callback_arguments = args
     return TCL_OK, length(args)
 end
 
 @testset "Callbacks" begin
-    # Create a simple callback in a private interpreter.
-    private = @inferred TclInterp(:private)
-    f = @inferred TclCallback(count_callback, private)
+    # Create a simple callback.
+    f = @inferred TclCallback(count_callback)
 
     # Callback properties.
-    @test length(@inferred propertynames(f)) == 4
+    @test length(@inferred propertynames(f)) == 3
     @test :func ∈ @inferred propertynames(f)
     @test :token ∈ @inferred propertynames(f)
-    @test :interp ∈ @inferred propertynames(f)
     @test :name ∈ @inferred propertynames(f)
-    @test f.interp === private
     @test f.func == count_callback
     @test f.token isa Ptr
     @test_throws KeyError f.non_existing_property = 1
@@ -844,61 +811,59 @@ end
     @test proc isa String
     @test startswith(proc, "::jl_func_")
     s = sprint(show, f)
-    @test match(r"\bCallback:.*::jl_func_.*", s) !== nothing
+    @test match(r"\bTclCallback:.*::jl_func_.*", s) !== nothing
     s = sprint((io, x) -> show(io, MIME"text/plain"(), x), f)
-    @test match(r"\bCallback:.*::jl_func_.*", s) !== nothing
+    @test match(r"\bTclCallback:.*::jl_func_.*", s) !== nothing
 
     # Exercise the callback.
     callback_counter[] = 0
-    @test 1 == private(Int, proc)
-    @test 1 == callback_counter[]
-    @test 2 == private(Int, proc, pi)
-    @test 2 == callback_counter[]
-    @test 3 == private(Int, proc)
-    @test 3 == callback_counter[]
-    @test 4 == private(Int, proc, "a", "b", (1, 2))
-    @test 4 == callback_counter[]
+    @test 1 == @inferred tcl_exec(Int, proc)
+    @test 1 == @inferred callback_counter[]
+    @test 2 == @inferred tcl_exec(Int, proc, pi)
+    @test 2 == @inferred callback_counter[]
+    @test 3 == @inferred tcl_exec(Int, proc)
+    @test 3 == @inferred callback_counter[]
+    @test 4 == @inferred tcl_exec(Int, proc, "a", "b", (1, 2))
+    @test 4 == @inferred callback_counter[]
 
     # Rename the callback in the same namespace and then in another namespace.
     newname = "jl_some_other_func_name"
-    f.interp(:rename, f.name, newname)
+    tcl_exec(:rename, f.name, newname)
     @test f.name == "::"*newname
     ns = "another::namespace"
-    f.interp.eval("namespace eval ::$ns {}")
-    f.interp(:rename, f.name, ns*"::"*newname)
+    tcl_eval("namespace eval ::$ns {}")
+    tcl_exec(:rename, f.name, ns*"::"*newname)
     @test f.name == "::"*ns*"::"*newname
 
     # Delete command.
     @test TclTk.deletecommand(f) == true
-    @test TclTk.deletecommand(private, proc) == false
+    @test TclTk.deletecommand(proc) == false
 
     # Deal with other returned values.
-    f1 = @inferred TclCallback(other_count_callback, private)
-    f2 = @inferred TclCallback(yet_another_count_callback, private)
+    f1 = @inferred TclCallback(other_count_callback)
+    f2 = @inferred TclCallback(yet_another_count_callback)
     callback_counter[] = 0
-    @test @inferred(private(String, f1.name)) == ""
+    @test @inferred(tcl_exec(String, f1.name)) == ""
     @test callback_counter[] == 1
-    @test @inferred(private(String, f2.name)) == ""
+    @test @inferred(tcl_exec(String, f2.name)) == ""
     @test callback_counter[] == 2
-    @test TclTk.deletecommand(f1.interp, f1.name) == true
-    @test TclTk.deletecommand(f1.interp, f1.name) == false
+    @test TclTk.deletecommand(f1.name) == true
+    @test TclTk.deletecommand(f1.name) == false
 
-    # A more complex callback in the shared interpreter.
-    interp = @inferred TclInterp()
+    # A more complex callback.
     name = "jl_simple_callback"
     f = @inferred TclCallback(simple_callback, name)
-    @test f.interp === interp
     proc = f.name
     @test proc isa String
     @test proc == "::"*name
     # Call simple callback with no arguments.
-    @test 1 == interp(Int, proc)
+    @test 1 == tcl_exec(Int, proc)
     @test callback_arguments isa TclObj
     @test callback_arguments.type == :list
     @test length(callback_arguments) == 1
     @test callback_arguments[1] == proc
     # Call simple callback with 3 arguments.
-    @test 4 == interp(Int, proc, "hello", 4.125, true)
+    @test 4 == tcl_exec(Int, proc, "hello", 4.125, true)
     @test callback_arguments isa TclObj
     @test callback_arguments.type == :list
     @test length(callback_arguments) == 4
@@ -908,10 +873,6 @@ end
     @test callback_arguments[4] == TclObj(true)
     @test TclTk.deletecommand(proc) == true
     @test TclTk.deletecommand(proc) == false
-
-    private = 0
-    sleep(0.01)
-    GC.gc()
 end
 
 @testset "Linked variables" begin
@@ -920,31 +881,31 @@ end
     @test eltype(A) === Int
     @test A.name == name
     @inferred tcl_eval("unset -nocomplain $(A.name)")
-    @test tcl_isassigned(A) == false
+    @test @inferred(tcl_isassigned(A)) == false
     @test isassigned(A) == false
     s = sprint(show, MIME"text/plain"(), A)
     @test startswith(s, "TclVariable{")
     @test endswith(s, ", value: #undef)")
     A[] = 0
     @test @inferred(A[]) === 0
-    @test tcl_isassigned(A) == true
+    @test @inferred(tcl_isassigned(A)) == true
     @test isassigned(A) == true
     s = sprint(show, MIME"text/plain"(), A)
     @test startswith(s, "TclVariable{")
     @test endswith(s, ", value: 0)")
     A[] += 3
     @test @inferred(A[]) === 3
-    @test tcl_getvar(eltype(A), A.interp, A.name) == 3
+    @test tcl_getvar(eltype(A), A.name) == 3
     @inferred tcl_eval("incr $(A.name) -2")
     @test @inferred(A[]) === 1
-    B = @inferred TclVariable(A.name, A.interp) # same variable but no given type
+    B = @inferred TclVariable(A.name) # same variable but no given type
     @test @inferred(B[]) isa TclObj
     @test @inferred(convert(eltype(A), B[])) === A[]
-    @test @inferred(B[eltype(A)]) === A[]
+    @test @inferred(fetch(eltype(A), B)) === A[]
     x = A[]
     B[] = x + 7
     @test @inferred(A[]) === x + 7
-    @test @inferred(B[eltype(A)]) === x + 7
+    @test @inferred(fetch(eltype(A), B)) === x + 7
 
     # Test various ways to unset a variable.
     delete!(A)

@@ -209,7 +209,7 @@ Base.showerror(io::IO, ex::TclError) = print(io, "Tcl/Tk error: ", ex.msg)
 Return a `TclError` exception with error message given by `string(args...)`.
 
 """
-@noinline TclError(arg, args...) = TclError(string(arg, args...))
+@noinline TclError(args...) = TclError(string(args...))
 
 """
     tcl_error(args...)

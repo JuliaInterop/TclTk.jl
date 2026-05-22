@@ -29,6 +29,7 @@ import ..TclTk:
 
     # Exported Tcl methods.
     tcl_concat,
+    tcl_error,
     tcl_eval,
     tcl_evalfile,
     tcl_exec,

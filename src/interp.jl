@@ -245,10 +245,13 @@ and returns a status. The behavior of `tcl_exec` depends on the type `T` of the 
 result:
 
 * If `T` is `Tuple{TclStatus,R}`, the status and the result of the Tcl command are returned
-  as a 2-tuple and with the result converted to type `R`.
+  as a 2-tuple and with the result converted to type `R`. In practice, `R` is one of
+  `TclObj`, `String`, or `Nothing`. No conversion of the result is attempted if `R` is
+  `Nothing` which is useful is the caller is only interested in the status.
 
 * Otherwise, if the command status is [`TCL_OK`](@ref TclStatus), the result of the command
-  is returned as a value of type `T` (no conversion is attempted if `T` is `Nothing`).
+  is returned as a value of type `T`. No conversion of the result is attempted if `T` is
+  `Nothing`.
 
 * Otherwise, if the command status is not [`TCL_OK`](@ref TclStatus), a [`TclError`](@ref)
   exception is thrown.
@@ -416,7 +419,11 @@ end
 
 function unsafe_eval_result(::Type{Tuple{TclStatus,T}},
                             status::TclStatus, result::ObjPtr) where {T}
-    return status, unsafe_convert(T, result)
+    if T === Nothing
+        return status, nothing
+    else
+        return status, unsafe_convert(T, result)::T
+    end
 end
 
 function unsafe_eval_result(::Type{T},

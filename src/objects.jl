@@ -650,6 +650,10 @@ Compared to `convert(T, obj)`, `convert(T, obj[i])`, or `convert(T, obj[inds])`,
 For basic types (numbers, string, etc.) and if an index `i` or indices `inds` are specified,
 `fetch` is a bit faster than `convert` as temporaries are avoided.
 
+As a special case, if `Nothing` is specified in `T`, then the corresponding value is
+returned as `nothing` without attempting any conversion. This may be used to *skip* items
+when `obj` is a Tcl list and `T` is a tuple type.
+
 # Examples
 
 ```julia-repl
@@ -670,6 +674,9 @@ julia> fetch(Tuple{String,Float64,Tuple{Char,Int}}, x, (4,3,5))
 
 julia> fetch(Tuple{Bool,Int16,Float32,Symbol}, x, 1:4)
 (false, -7, 1.5f0, :text)
+
+julia> fetch(Tuple{Bool,Int16,Nothing,Symbol}, x, 1:4)
+(false, -7, nothing, :text)
 
 ```
 
@@ -699,6 +706,9 @@ function Base.fetch(::Type{T}, obj::TclObj) where {T}
     if T <: TkObject
         # Call the constructor for Tk objects.
         return T(obj)::T
+    elseif T <: Nothing
+        # Special behavior: do not attempt any conversion.
+        return nothing
     else
         # For other types, it is sufficient to call `convert`.
         return convert(T, obj)::T
@@ -739,19 +749,22 @@ end
     end
 end
 
-# Same as `fetch` but for an object pointer.
+# `unsafe_fetch` implements `fetch` but for an object pointer.
 function unsafe_fetch(::Type{T}, objptr::ObjPtr) where {T}
     if T <: TkObject
         # Call the constructor for Tk objects.
-        return T(_TclObj(objptr))
+        return T(_TclObj(objptr))::T
+    elseif T <: Nothing
+        # Special behavior: do not attempt any conversion.
+        return nothing
     else
         # Default is to call `unsafe_convert`.
-        return unsafe_convert(T, objptr)
+        return unsafe_convert(T, objptr)::T
     end
 end
 
-# Convert to fully specified Tuple.
-@generated function unsafe_fetch(::Type{T}, objptr::ObjPtr) where {N,T<:NTuple{N,Any}}
+@generated function unsafe_fetch(::Type{T}, objptr::ObjPtr) where {N, T <: NTuple{N,Any}}
+    # Convert to fully specified Tuple.
     types = fieldtypes(T)
     expr = Expr(:tuple, [:(unsafe_fetch($(types[i]), list[$i])) for i in 1:N]...)
     quote

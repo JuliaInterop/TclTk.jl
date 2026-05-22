@@ -49,6 +49,15 @@ Versioning](https://semver.org).
 
 - `tk_getopenfile` no longer allow for multiple selections, all `tk_getopenfiles` for that.
 
+### Changed
+
+- In `tcl_exec` and `tcl_eval`, `Nothing` may be specified in the returned type or type
+  tuple to yield `nothing` without attempting any conversion.
+
+- In `fetch` applied to retrieve a tuple of values from a Tcl object, `Nothing` may be
+  specified to skip an element with trying to convert it.
+
+
 ### Added
 
 - New `wm` function for interacting with the window manager. This function accepts

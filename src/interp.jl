@@ -128,22 +128,54 @@ end
         ptr = Tcl_SetVar(interp, "tcl_library", tcl_library, flags)
         isnull(ptr) && tcl_error("unable to set `tcl_library`: ",
                                  unsafe_get_result(String, interp))
+        files = findfile("init.tcl", tcl_library)
+        if isempty(files)
+            println(stderr, "File `init.tcl` not found")
+        else
+            for file in files
+                println(stderr, "File `init.tcl` found in ", dirname(file))
+            end
+        end
+        TCL_LIBRARY = get(ENV, "TCL_LIBRARY", nothing)
+        if TCL_LIBRARY !== nothing
+            @warn "Environment variable `TCL_LIBRARY` is \"$(escape_string(TCL_LIBRARY))\""
+            ENV["TCL_LIBRARY"] = tcl_library
+        end
+        println(stderr, "Before `Tcl_Init`, `tcl_library` = ", tcl_library)
         status = @ccall libtcl.Tcl_Init(interp::Ptr{Tcl_Interp})::TclStatus
         status == TCL_OK || tcl_error("unable to initialize Tcl interpreter: ",
                                       unsafe_get_result(String, interp))
+        println(stderr, "After  `Tcl_Init`, `tcl_library` = ",
+                unsafe_string(Tcl_GetVar(interp, "tcl_library", flags)))
 
         # Initialize Tcl interpreter to find Tk library scripts.
         tk_library = joinpath(dirname(dirname(Tk_jll.libtk_path)), "lib",
                               "tk$(TCL_MAJOR_VERSION).$(TCL_MINOR_VERSION)")
-        env["TK_LIBRARY"] = tk_library
         ptr = Tcl_SetVar(interp, "tk_library", tk_library, flags)
         isnull(ptr) && tcl_error("unable to set `tk_library`: ",
                                  unsafe_get_result(String, interp))
+        files = findfile("tk.tcl", tk_library)
+        if isempty(files)
+            println(stderr, "File `tk.tcl` not found")
+        else
+            for file in files
+                println(stderr, "File `tk.tcl` found in ", dirname(file))
+            end
+        end
+        TK_LIBRARY = get(ENV, "TK_LIBRARY", nothing)
+        if TK_LIBRARY !== nothing
+            @warn "Environment variable `TK_LIBRARY` is \"$(escape_string(TK_LIBRARY))\""
+            ENV["TK_LIBRARY"] = tk_library
+        end
         # Load Tk and Ttk packages. It is not needed to explicitly load these packages, it
         # is sufficient to call `Tk_Init`.
+        println(stderr, "Before `Tk_Init`, `tk_library` = ", tk_library)
         status = @ccall libtk.Tk_Init(interp::Ptr{Tcl_Interp})::TclStatus
         status == TCL_OK || tcl_error("unable to initialize Tk interpreter: ",
                                       unsafe_get_result(String, interp))
+        println(stderr, "After  `Tk_Init`, `tk_library` = ",
+                unsafe_string(Tcl_GetVar(interp, "tk_library", flags)))
+
         # Load Tcl-side helpers for working with Julia interface.
         srcdir = @__DIR__
         path = joinpath(srcdir, "julia.tcl")
@@ -171,6 +203,16 @@ end
     # Start processing events.
     resume_events()
     return nothing
+end
+
+function findfile(filename::AbstractString, dir::AbstractString = pwd(); kwds...)
+    result = String[]
+    if isdir(dir)
+        for (path, dirs, files) in walkdir(abspath(dir); kwds...)
+            filename ∈ files && push!(result, joinpath(path, filename))
+        end
+    end
+    return result
 end
 
 # Callback called to evaluate a Tcl call requiring an interpreter. Must only be executed in

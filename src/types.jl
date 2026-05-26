@@ -93,7 +93,13 @@ const Name = Union{Word,Real}
 const VarName = Union{Name,NTuple{2,Name}}
 
 struct TclVariable{T}
-    name::TclObj
+    name::TclObj # name of global Tcl variable
+    TclVariable{T}(name::Name) where {T} = new{T}(tcl_absname(name))
+end
+
+struct TclArray{K,V<:Name} <: AbstractDict{K,V}
+    name::TclObj # name of global Tcl array
+    TclArray{K,V}(name::Name) where {K,V} = new{K,V}(tcl_absname(name))
 end
 
 #-------------------------------------------------------------------------------------------

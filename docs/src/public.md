@@ -27,6 +27,7 @@ tcl_error
 ## Variables
 
 ```@docs
+TclArray
 TclVariable
 tcl_getvar
 tcl_isassigned

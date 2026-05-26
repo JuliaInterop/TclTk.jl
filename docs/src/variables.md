@@ -63,3 +63,40 @@ julia> delete!(A) # unset the variable value
 As can be guessed from the above example, `A[]` yields the value of the Tcl variable
 (converted to the type of the variable, here `Float64`) while `A[] = x` mutates the value of
 the variable.
+
+## Global Tcl arrays
+
+A Tcl array is similar to a dictionary in Julia. The [`TclArray`](@ref) constructor yields an
+abstract dictionary associated with a global Tcl array. The syntax of the constructor is:
+
+```julia
+TclArray{K,V}(name, key=>val, ...)
+```
+
+where `name`, the name of the global Tcl array, may be followed by any number of `key=>val`
+pairs. If not specified, the key and value types (`K` and `V`) default to `TclObj`.
+
+Example:
+
+```julia-repl
+julia> A = TclArray{String,TclObj}("ARR", "value"=>2.125, "origin"=>"south-west", "counts"=>4)
+TclArray{String,TclObj}("::ARR") with 3 entries:
+  "origin" => TclObj("south-west")
+  "counts" => TclObj(4)
+  "value" => TclObj(2.125)
+
+julia> tcl_eval("parray $(A.name)")
+::ARR(counts) = 4
+::ARR(origin) = south-west
+::ARR(value)  = 2.125
+
+julia> A["count"] = 2
+2
+
+julia> delete!(A, "value")
+
+julia> tcl_eval("parray $(A.name)")
+::ARR(count)  = 2
+::ARR(origin) = south-west
+
+```

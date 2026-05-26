@@ -926,4 +926,61 @@ end
 
 end
 
+@testset "Linked arrays" begin
+    name = "ARR"
+    @inferred tcl_eval("unset -nocomplain $name")
+    A = @inferred TclArray(name)
+    @test keytype(A) === TclObj
+    @test valtype(A) === TclObj
+    @test A.name == "::"*name
+    @test isempty(A)
+    s = sprint(show, MIME"text/plain"(), A)
+    @test startswith(s, "TclArray{")
+    @test endswith(s, " with 0 entry")
+    key, val = "index", 52
+    A[key] = val
+    @test !isempty(A)
+    @test length(A) == 1
+    @test key ∈ keys(A)
+    @test haskey(A, key)
+    @test TclObj(val) == @inferred A[key]
+    @test TclObj(val) == get(A, key, missing)
+    @test @inferred(fetch(typeof(val), A, key)) === val
+    s = sprint(show, MIME"text/plain"(), A)
+    @test startswith(s, "TclArray{")
+    r = findfirst(" with 1 entry:\n", s)
+    @test r !== nothing && !isempty(r)
+    key, val = "threshold", -12.25
+    A[key] = val
+    @test !isempty(A)
+    @test length(A) == 2
+    @test key ∈ keys(A)
+    @test haskey(A, key)
+    @test TclObj(val) == @inferred A[key]
+    @test TclObj(val) == get(A, key, missing)
+    @test @inferred(fetch(typeof(val), A, key)) === val
+    s = sprint(show, MIME"text/plain"(), A)
+    @test startswith(s, "TclArray{")
+    r = findfirst(" with 2 entries:\n", s)
+    @test r !== nothing && !isempty(r)
+    @inferred delete!(A, key)
+    @test length(A) == 1
+    @inferred tcl_eval("unset -nocomplain $name")
+    @test isempty(A)
+
+    data = ("index"=>11, "value"=>9.125, "start"=>true)
+    A = @inferred TclArray{String,Real}(name, data...)
+    @test keytype(A) === String
+    @test valtype(A) === Real
+    @test A.name == "::"*name
+    @test length(A) == 3
+    k1 = sort!(collect(@inferred keys(A)))
+    k2 = sort!([k for (k,v) in data])
+    @test k1 == k2
+    v1 = sort!(collect(@inferred values(A)))
+    v2 = sort!([v for (k,v) in data])
+    @test v1 == v2
+
+end
+
 end # module

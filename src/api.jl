@@ -73,6 +73,16 @@ function tcl_setvar end
 function tcl_unsetvar end
 
 """
+    tcl_absname(name)
+
+Return the absolute name of a Tcl variable or procedure. The result is `name` prefixed by
+`"::"` if it does not starts with `"::"` or `name` (converted to a `String`) otherwise.
+
+"""
+tcl_absname(name::String) = startswith(name, "::") ? name : "::"*name
+tcl_absname(name::Name) = tcl_absname(String(name)::String)
+
+"""
    A = TclVariable{T}(var)
 
 Return a Julia object `A` linked to the global Tcl variable named `var`. The variable value
@@ -86,14 +96,14 @@ with `S` a type, can be used to efficiently convert the value of the variable to
 Currently, `var` must refer to a simple Tcl variable or to a single element of a Tcl array
 (in which case, `name` may be a 2-tuple `(part1, part2)`), not to a Tcl array name.
 
-Property `A.name` yields the name of the Tcl variable.
+Property `A.name` yields the name of the global Tcl variable.
 
 Call `eltype(A)` to retrieve the type of `A` and `isassigned(A)` or
 [`tcl_isassigned(A)`](@ref tcl_isassigned) to check whether `A` has an associated value. To
 unset the value of `A`, call `delete!(A)`, [`tcl_unsetvar(A)`](@ref tcl_unsetvar), or do
 `A[] = unset`.
 
-Example:
+# Examples
 
 ```julia-repl
 julia> A = TclVariable{Int}("::GLOBAL_COUNTER")
@@ -111,6 +121,11 @@ julia> A[]
 4
 
 ```
+
+# See also
+
+[`tcl_isassigned`](@ref), [`tcl_getvar`](@ref), [`tcl_setvar`](@ref),
+[`tcl_unsetvar`](@ref), and [`TclArray`](@ref).
 
 """
 TclVariable(var::VarName) = TclVariable{TclObj}(var)
@@ -148,6 +163,168 @@ tcl_setvar(::Type{T}, A::TclVariable, x) where {T} = tcl_setvar(T, A.name, x)
 
 Base.delete!(A::TclVariable) = tcl_unsetvar(A; nocomplain=true)
 tcl_unsetvar(A::TclVariable; kwds...) = tcl_unsetvar(A.name; kwds...)
+
+"""
+   A = TclArray{K,V}(arr)
+
+Return an abstract dictionary `A` which is linked to a global Tcl array named `arr`.
+Expression `A[key]` refer to the element `key` in the global Tcl array `arr` which takes the
+form `arr(key)` in a Tcl script.
+
+Key and value types, `K` and `V`, default to `TclObj` if not specified.
+
+Property `A.name` yields the name of the global Tcl array.
+
+# Examples
+
+```julia-repl
+julia> A = TclArray{String,Real}("data", "index" => 7, "value" => 33.5)
+TclArray{String,Real}("::data") with 2 entries:
+  "index" => 7
+  "value" => 33.5
+
+julia> A["index"]
+7
+
+```
+
+# See also
+
+[`tcl_isassigned`](@ref), [`tcl_getvar`](@ref), [`tcl_setvar`](@ref),
+[`tcl_unsetvar`](@ref), and [`TclVariable`](@ref).
+
+"""
+TclArray(arr::Name, pairs::Pair...) = TclArray{TclObj}(arr, pairs...)
+TclArray{K}(arr::Name, pairs::Pair...) where {K} = TclArray{K,TclObj}(arr, pairs...)
+function TclArray{K,V}(arr::Name, pairs::Pair...) where {K,V}
+    A = TclArray{K,V}(arr)
+    for (key, val) in pairs
+        A[key] = val
+    end
+    return A
+end
+
+Base.show(io::IO, ::MIME"text/plain", A::TclArray) = show(io, A)
+function Base.show(io::IO, A::TclArray{K,V}) where {K,V}
+    print(io, "TclArray{", K, ",", V, "}(\"")
+    escape_string(io, string(A.name))
+    print(io, "\")")
+    len = length(A)
+    print(io, " with ", len, (len > 1 ? " entries" : " entry"))
+    if len > 0
+        print(io, ":")
+        for pair in A
+            print(io, "\n  ", pair)
+        end
+    end
+end
+
+Base.haskey(A::TclArray, key) = tcl_isassigned(A, key)
+
+function Base.get(A::TclArray, key, def)
+    try
+        return A[key]
+    catch ex
+        if (ex isa TclError && startswith(ex.msg, "can't read") &&
+            endswith(ex.msg, "no such element in array"))
+            return def
+        end
+        rethrow(ex)
+    end
+end
+
+Base.getindex(A::TclArray{K,V}, key) where {K,V} = tcl_getvar(V, (A.name, key))
+
+function Base.setindex!(A::TclArray{K,V}, val, key) where {K,V}
+    tcl_setvar(Nothing, (A.name, key), val)
+    return A
+end
+
+Base.fetch(A::TclArray{K,V}, key) where {K,V} = fetch(V, A, key)
+Base.fetch(::Type{T}, A::TclArray, key) where {T} = tcl_getvar(T, A, key)
+
+Base.delete!(A::TclArray, key) = tcl_unsetvar(A, key; nocomplain=true)
+
+Base.length(A::TclArray) = tcl_exec(Int, "::array", :size, A.name)
+
+# NOTE In Julia, `keys`, `values`, and `pairs` must return the content of a dictionary in
+#      the same order. So, we base these methods on the result of Tcl `array get` assuming
+#      that this order is unchanged if the array is not modified.
+struct TclArrayIterator{K,V,F}
+    content::TclObj
+    length::Int
+    fetch::F
+    function TclArrayIterator(A::TclArray{K,V}, fetch::F) where {K,V,F}
+        obj = tcl_exec(TclObj, "::array", :get, A.name)
+        len = length(obj)
+        iseven(len) || throw(AssertionError("expecting an even number of elements, got $len"))
+        return new{K,V,F}(obj, len>>1, fetch)
+    end
+end
+
+function fetch_pair(A::TclArrayIterator{K,V}, i::Int) where {K,V}
+    return fetch_key(A, i) => fetch_value(A, i)
+end
+
+function fetch_key(A::TclArrayIterator{K,V}, i::Int) where {K,V}
+    return fetch(K, A.content, 2i - 1)
+end
+
+function fetch_value(A::TclArrayIterator{K,V}, i::Int) where {K,V}
+    return fetch(V, A.content, 2i)
+end
+
+const TclArrayPairs{ K,V} = TclArrayIterator{K,V,typeof(fetch_pair)}
+const TclArrayKeys{  K,V} = TclArrayIterator{K,V,typeof(fetch_key)}
+const TclArrayValues{K,V} = TclArrayIterator{K,V,typeof(fetch_value)}
+
+Base.pairs( A::TclArray) = TclArrayIterator(A, fetch_pair)
+Base.keys(  A::TclArray) = TclArrayIterator(A, fetch_key)
+Base.values(A::TclArray) = TclArrayIterator(A, fetch_value)
+
+function Base.iterate(itr::TclArrayIterator, i::Int=1)
+    1 ≤ i ≤ length(itr) || return nothing
+    return (itr.fetch(itr, i), i + 1)
+end
+
+function Base.iterate(A::TclArray{K,V},
+                      (itr, i)::Tuple{TclArrayPairs{K,V},Int}=(pairs(A),1)) where {K,V}
+    1 ≤ i ≤ length(itr) || return nothing
+    return (itr.fetch(itr, i), (itr, i + 1))
+end
+
+Base.show(io::IO, ::MIME"text/plain", A::TclArrayIterator) = show(io, A)
+function Base.show(io::IO, A::TclArrayIterator{K,V,F}) where {K,V,F}
+    if F === typeof(fetch_pair)
+        print(io, "TclArrayPairs{", K, ",", V)
+    elseif F === typeof(fetch_keys)
+        print(io, "TclArrayKeys{", K, ",", V)
+    elseif F === typeof(fetch_values)
+        print(io, "TclArrayValues{", K, ",", V)
+    else
+        print(io, "TclArrayIterator{", K, ",", V, ",", F)
+    end
+    print(io, "}(", length(A), " item(s))")
+end
+
+Base.IteratorSize(::Type{<:TclArrayIterator}) = Base.HasLength()
+Base.length(A::TclArrayIterator) = A.length
+
+Base.IteratorEltype(::Type{<:TclArrayIterator}) = Base.HasEltype()
+Base.eltype(::Type{<:TclArrayPairs{K,V}}) where {K,V} = Pair{K,V}
+Base.eltype(::Type{<:TclArrayKeys{K,V}}) where {K,V} = K
+Base.eltype(::Type{<:TclArrayValues{K,V}}) where {K,V} = V
+
+tcl_isassigned(A::TclArray, key) = false
+tcl_isassigned(A::TclArray, key::Name) = tcl_isassigned((A.name, key))
+
+tcl_getvar(A::TclArray{K,V}, key) where {K,V} = tcl_getvar(V, A, key)
+tcl_getvar(::Type{T}, A::TclArray, key) where {T} = tcl_getvar(T, (A.name, key))
+
+tcl_setvar(A::TclArray, x) = tcl_setvar(Nothing, A, x)
+tcl_setvar(::Type{T}, A::TclArray, x) where {T} = tcl_setvar(T, A.name, x)
+
+tcl_unsetvar(A::TclArray, key; kwds...) = tcl_unsetvar((A.name, key); kwds...)
 
 #------------------------------------------------------------------------------- Callbacks -
 function deletecommand end

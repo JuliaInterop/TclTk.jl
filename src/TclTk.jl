@@ -3,6 +3,7 @@ module TclTk
 # Exported public symbols.
 export
     # Tcl types.
+    TclArray,
     TclCallback,
     TclError,
     TclObj,

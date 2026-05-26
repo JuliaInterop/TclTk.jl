@@ -60,13 +60,16 @@ Versioning](https://semver.org).
 
 ### Added
 
-- New `tcl_evalfile` function for evaluate a Tcl script written in a file.
+- New `tcl_evalfile` function to evaluate a Tcl script written in a file.
+
+- Top-level widgets have a default icon set with the logo displayed in the documentation.
+
+- New `TclArray` constructor to build an abstract dictionary associated with a global Tcl
+  array.
 
 - New `TclTk.wm` function for interacting with the window manager. This function accepts
   sub-commands. For example, `TclTk.wm.title(w, "Window Title")` to specify the title of the
   top level window `w`.
-
-- Top-level widgets have a default icon set with the logo displayed in the documentation.
 
 - The title of a top-level widget `w` can be queried by `w.title()` and set by
   `w.title("New Title")`.

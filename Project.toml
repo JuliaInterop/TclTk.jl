@@ -30,7 +30,7 @@ Tcl_jll = "9.0"
 Test = "1"
 TestImages = "1.9.0"
 Tk_jll = "9.0"
-TypeUtils = "1.14.0"
+TypeUtils = "1.14.0, 2"
 UnsetIndex = "0.1.2"
 julia = "1.6"
 

@@ -18,7 +18,7 @@ UnsetIndex = "cc9ef2aa-5034-4aa9-a69b-c36694cce9f8"
 
 [compat]
 Aqua = "0.8"
-CEnum = "0.5.0"
+CEnum = "0.5.0, 1.0"
 ColorTypes = "0.12.1"
 Colors = "0.13.1"
 FixedPointNumbers = "0.8.5, 0.9"
